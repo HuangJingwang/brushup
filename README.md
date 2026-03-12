@@ -28,7 +28,7 @@ LeetForge 帮你解决这三个问题：
 
 ```bash
 # 克隆 & 安装
-git clone https://github.com/HuangJingwang/leetcode_auto.git
+git clone https://github.com/HuangJingwang/leetforge.git
 cd leetcode_auto
 pip install -e .
 
@@ -158,7 +158,7 @@ LeetForge 自动追踪每道题的 R1~R5 完成日期，精准计算哪些题今
 ### 一键安装（推荐）
 
 ```bash
-git clone https://github.com/HuangJingwang/leetcode_auto.git
+git clone https://github.com/HuangJingwang/leetforge.git
 cd leetcode_auto
 ./install.sh
 ```
@@ -168,7 +168,7 @@ cd leetcode_auto
 ### 手动安装
 
 ```bash
-git clone https://github.com/HuangJingwang/leetcode_auto.git
+git clone https://github.com/HuangJingwang/leetforge.git
 cd leetcode_auto
 pip install -e .
 ```
