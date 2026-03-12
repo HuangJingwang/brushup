@@ -39,8 +39,9 @@ leetcode
 首次运行会自动完成三件事：创建 `~/Desktop/刷题计划/` 文件夹 → 打开浏览器登录 LeetCode CN → 拉取今日 AC 记录并写入进度表。
 
 ```bash
-# 设置每天 23:00 自动同步（后台运行，关终端不影响）
-leetcode --daemon 23:00
+# 设置后台自动同步（关终端不影响）
+leetcode --daemon 1h        # 每小时
+leetcode --daemon 23:00     # 或每天固定时间
 ```
 
 ## Features
@@ -56,12 +57,14 @@ leetcode
 ### 后台守护
 
 ```bash
-leetcode --daemon 23:00     # 注册：每天 23:00 自动同步
+leetcode --daemon 30m       # 每 30 分钟同步一次
+leetcode --daemon 1h        # 每小时同步一次
+leetcode --daemon 23:00     # 每天 23:00 同步
 leetcode --daemon status    # 查看后台任务状态
 leetcode --daemon stop      # 卸载后台任务
 ```
 
-注册一次即永久生效，**关闭终端、注销用户都不影响**。按系统自动适配：
+支持分钟(`10m`)、小时(`2h`)、固定时间(`23:00`)三种格式，注册一次即永久生效，**关闭终端、注销用户都不影响**。按系统自动适配：
 
 | 系统 | 底层实现 | 管理方式 |
 |:-----|:---------|:---------|
@@ -141,7 +144,9 @@ leetcode --web 3000     # 自定义端口
 | `leetcode --report` | 生成每周报告（Markdown） |
 | `leetcode --badge` | 生成 SVG 进度徽章，可嵌入 GitHub Profile |
 | `leetcode --login` | 重新打开浏览器登录 |
-| `leetcode --daemon 23:00` | 注册系统后台定时任务（关终端不影响） |
+| `leetcode --daemon 30m` | 每 30 分钟后台同步 |
+| `leetcode --daemon 1h` | 每小时后台同步 |
+| `leetcode --daemon 23:00` | 每天固定时间后台同步 |
 | `leetcode --daemon status` | 查看后台任务状态 |
 | `leetcode --daemon stop` | 卸载后台定时任务 |
 | `leetcode --cron 23:00` | 前台定时同步（终端需保持运行） |

@@ -13,7 +13,9 @@
     leetcode --report     生成每周报告
     leetcode --badge      生成 SVG 进度徽章
     leetcode --login      打开浏览器重新登录
-    leetcode --daemon 23:00 注册后台定时任务（关终端不影响）
+    leetcode --daemon 30m    每 30 分钟后台同步（关终端不影响）
+    leetcode --daemon 1h     每小时后台同步
+    leetcode --daemon 23:00  每天 23:00 后台同步
     leetcode --daemon status 查看后台任务状态
     leetcode --daemon stop   卸载后台定时任务
     leetcode --cron 23:00    前台定时同步（终端需保持运行）
@@ -832,7 +834,9 @@ def main():
             "  leetcode --weakness   分类薄弱点分析\n"
             "  leetcode --report     生成每周报告\n"
             "  leetcode --badge      生成 SVG 进度徽章\n"
-            "  leetcode --daemon 23:00  注册后台定时任务\n"
+            "  leetcode --daemon 30m    每 30 分钟后台同步\n"
+            "  leetcode --daemon 1h     每小时后台同步\n"
+            "  leetcode --daemon 23:00  每天 23:00 后台同步\n"
             "  leetcode --daemon status 查看后台任务状态\n"
             "  leetcode --daemon stop   卸载后台定时任务\n"
         ),
@@ -852,8 +856,8 @@ def main():
     parser.add_argument("--report", action="store_true",
                         help="生成每周报告")
     parser.add_argument("--daemon", nargs="?", const="status",
-                        metavar="HH:MM|stop|status",
-                        help="注册系统后台定时任务（关终端不影响）")
+                        metavar="SCHEDULE",
+                        help="后台定时任务：30m/1h/23:00/status/stop")
     parser.add_argument("--cron", metavar="HH:MM",
                         help="前台定时同步（终端保持运行）")
     args = parser.parse_args()

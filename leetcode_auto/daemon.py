@@ -1,29 +1,119 @@
 """后台守护：注册/卸载系统级定时任务，关终端也不影响。
 
+支持的调度格式：
+    10m / 30m       — 每 N 分钟
+    1h / 2h         — 每 N 小时
+    23:00           — 每天固定时间
+
 macOS  → LaunchAgent (~/Library/LaunchAgents/)
 Linux  → systemd user timer (~/.config/systemd/user/)
 Windows → schtasks
 """
 
+import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 from .config import DATA_DIR
 
 SERVICE_ID = "com.leetforge.sync"
 LOG_FILE = DATA_DIR / "sync.log"
+SCHEDULE_FILE = DATA_DIR / "daemon_schedule.json"
 
 
 def _find_leetcode_bin() -> str:
-    """找到 leetcode 可执行文件的绝对路径。"""
     which = shutil.which("leetcode")
     if which:
         return str(Path(which).resolve())
     return f"{sys.executable} -m leetcode_auto.sync"
+
+
+# ---------------------------------------------------------------------------
+# 调度解析
+# ---------------------------------------------------------------------------
+
+class Schedule:
+    """统一的调度配置。"""
+    def __init__(self, mode: str, interval_seconds: int = 0,
+                 hour: int = 0, minute: int = 0, raw: str = ""):
+        self.mode = mode            # "interval" | "daily"
+        self.interval_seconds = interval_seconds
+        self.hour = hour
+        self.minute = minute
+        self.raw = raw
+
+    def human_str(self) -> str:
+        if self.mode == "interval":
+            if self.interval_seconds >= 3600:
+                return f"每 {self.interval_seconds // 3600} 小时"
+            return f"每 {self.interval_seconds // 60} 分钟"
+        return f"每天 {self.hour:02d}:{self.minute:02d}"
+
+    def to_dict(self) -> dict:
+        return {"mode": self.mode, "interval_seconds": self.interval_seconds,
+                "hour": self.hour, "minute": self.minute, "raw": self.raw}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Schedule":
+        return cls(**d)
+
+
+def parse_schedule(text: str) -> Schedule:
+    """解析用户输入的调度字符串。
+
+    支持格式：
+        10m / 30m     — 每 N 分钟（最小 1 分钟）
+        1h / 2h       — 每 N 小时
+        23:00         — 每天固定时间
+    """
+    text = text.strip().lower()
+
+    m = re.fullmatch(r"(\d+)m(?:in)?", text)
+    if m:
+        minutes = int(m.group(1))
+        if minutes < 1:
+            raise ValueError("最小间隔为 1 分钟")
+        return Schedule("interval", interval_seconds=minutes * 60, raw=text)
+
+    m = re.fullmatch(r"(\d+)h(?:r|our)?s?", text)
+    if m:
+        hours = int(m.group(1))
+        if hours < 1:
+            raise ValueError("最小间隔为 1 小时")
+        return Schedule("interval", interval_seconds=hours * 3600, raw=text)
+
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})", text)
+    if m:
+        h, mi = int(m.group(1)), int(m.group(2))
+        if not (0 <= h <= 23 and 0 <= mi <= 59):
+            raise ValueError("时间范围：00:00 ~ 23:59")
+        return Schedule("daily", hour=h, minute=mi, raw=text)
+
+    raise ValueError(
+        f"无法识别的格式：{text}\n"
+        "支持格式：10m / 30m / 1h / 2h / 23:00"
+    )
+
+
+def _save_schedule(sched: Schedule):
+    SCHEDULE_FILE.write_text(
+        json.dumps(sched.to_dict(), ensure_ascii=False), encoding="utf-8")
+
+
+def _load_schedule() -> Optional[Schedule]:
+    if SCHEDULE_FILE.exists():
+        try:
+            return Schedule.from_dict(
+                json.loads(SCHEDULE_FILE.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -34,13 +124,33 @@ _PLIST_DIR = Path.home() / "Library" / "LaunchAgents"
 _PLIST_FILE = _PLIST_DIR / f"{SERVICE_ID}.plist"
 
 
-def _plist_content(hour: int, minute: int) -> str:
+def _plist_program_args() -> str:
     lc_bin = _find_leetcode_bin()
     if " " in lc_bin:
         parts = lc_bin.split()
-        program_args = "\n".join(f"        <string>{p}</string>" for p in parts)
+        return "\n".join(f"        <string>{p}</string>" for p in parts)
+    return f"        <string>{lc_bin}</string>"
+
+
+def _plist_content(sched: Schedule) -> str:
+    prog = _plist_program_args()
+    path_env = os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
+
+    if sched.mode == "interval":
+        trigger = (
+            f"    <key>StartInterval</key>\n"
+            f"    <integer>{sched.interval_seconds}</integer>"
+        )
     else:
-        program_args = f"        <string>{lc_bin}</string>"
+        trigger = (
+            f"    <key>StartCalendarInterval</key>\n"
+            f"    <dict>\n"
+            f"        <key>Hour</key>\n"
+            f"        <integer>{sched.hour}</integer>\n"
+            f"        <key>Minute</key>\n"
+            f"        <integer>{sched.minute}</integer>\n"
+            f"    </dict>"
+        )
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -52,16 +162,10 @@ def _plist_content(hour: int, minute: int) -> str:
 
     <key>ProgramArguments</key>
     <array>
-{program_args}
+{prog}
     </array>
 
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>{hour}</integer>
-        <key>Minute</key>
-        <integer>{minute}</integer>
-    </dict>
+{trigger}
 
     <key>StandardOutPath</key>
     <string>{LOG_FILE}</string>
@@ -74,18 +178,18 @@ def _plist_content(hour: int, minute: int) -> str:
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>{os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")}</string>
+        <string>{path_env}</string>
     </dict>
 </dict>
 </plist>"""
 
 
-def _install_macos(hour: int, minute: int):
+def _install_macos(sched: Schedule):
     _PLIST_DIR.mkdir(parents=True, exist_ok=True)
     _unload_macos(quiet=True)
-    _PLIST_FILE.write_text(_plist_content(hour, minute), encoding="utf-8")
+    _PLIST_FILE.write_text(_plist_content(sched), encoding="utf-8")
     subprocess.run(["launchctl", "load", str(_PLIST_FILE)], check=True)
-    print(f"已注册 macOS LaunchAgent，每天 {hour:02d}:{minute:02d} 自动同步。")
+    print(f"已注册 macOS LaunchAgent，{sched.human_str()}自动同步。")
     print(f"日志文件：{LOG_FILE}")
     print(f"配置文件：{_PLIST_FILE}")
 
@@ -110,13 +214,17 @@ def _status_macos():
         if SERVICE_ID in line:
             parts = line.split()
             pid = parts[0] if parts[0] != "-" else "待触发"
+            sched = _load_schedule()
             print(f"状态：已注册")
+            if sched:
+                print(f"频率：{sched.human_str()}")
             print(f"进程：{pid}")
             print(f"配置：{_PLIST_FILE}")
             print(f"日志：{LOG_FILE}")
             _print_last_log()
             return
-    print("状态：未注册（运行 leetcode --daemon HH:MM 来启用）")
+    print("状态：未注册")
+    _print_help_hint()
 
 
 # ---------------------------------------------------------------------------
@@ -128,13 +236,23 @@ _SERVICE_FILE = _SYSTEMD_DIR / "leetforge-sync.service"
 _TIMER_FILE = _SYSTEMD_DIR / "leetforge-sync.timer"
 
 
-def _install_linux(hour: int, minute: int):
+def _systemd_on_calendar(sched: Schedule) -> str:
+    if sched.mode == "interval":
+        mins = sched.interval_seconds // 60
+        if mins >= 60:
+            hours = mins // 60
+            return f"*-*-* 0/{hours}:00:00"
+        return f"*-*-* *:0/{mins}:00"
+    return f"*-*-* {sched.hour:02d}:{sched.minute:02d}:00"
+
+
+def _install_linux(sched: Schedule):
     lc_bin = _find_leetcode_bin()
     _SYSTEMD_DIR.mkdir(parents=True, exist_ok=True)
 
     _SERVICE_FILE.write_text(
         f"[Unit]\n"
-        f"Description=LeetForge daily sync\n"
+        f"Description=LeetForge sync\n"
         f"\n"
         f"[Service]\n"
         f"Type=oneshot\n"
@@ -146,10 +264,10 @@ def _install_linux(hour: int, minute: int):
     )
     _TIMER_FILE.write_text(
         f"[Unit]\n"
-        f"Description=LeetForge daily sync timer\n"
+        f"Description=LeetForge sync timer\n"
         f"\n"
         f"[Timer]\n"
-        f"OnCalendar=*-*-* {hour:02d}:{minute:02d}:00\n"
+        f"OnCalendar={_systemd_on_calendar(sched)}\n"
         f"Persistent=true\n"
         f"\n"
         f"[Install]\n"
@@ -159,7 +277,7 @@ def _install_linux(hour: int, minute: int):
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "--user", "enable", "--now",
                     "leetforge-sync.timer"], check=True)
-    print(f"已注册 systemd 定时器，每天 {hour:02d}:{minute:02d} 自动同步。")
+    print(f"已注册 systemd 定时器，{sched.human_str()}自动同步。")
     print(f"日志文件：{LOG_FILE}")
     print(f"查看状态：systemctl --user status leetforge-sync.timer")
 
@@ -182,7 +300,10 @@ def _status_linux():
     )
     active = result.stdout.strip() == "active"
     if active:
+        sched = _load_schedule()
         print("状态：运行中")
+        if sched:
+            print(f"频率：{sched.human_str()}")
         info = subprocess.run(
             ["systemctl", "--user", "status", "leetforge-sync.timer"],
             capture_output=True, text=True,
@@ -191,7 +312,8 @@ def _status_linux():
             if "Trigger:" in line or "trigger:" in line.lower():
                 print(f"下次触发：{line.strip()}")
     else:
-        print("状态：未注册（运行 leetcode --daemon HH:MM 来启用）")
+        print("状态：未注册")
+        _print_help_hint()
     print(f"日志：{LOG_FILE}")
     _print_last_log()
 
@@ -203,14 +325,24 @@ def _status_linux():
 _TASK_NAME = "LeetForge-Sync"
 
 
-def _install_windows(hour: int, minute: int):
+def _install_windows(sched: Schedule):
     lc_bin = _find_leetcode_bin()
-    time_str = f"{hour:02d}:{minute:02d}"
-    subprocess.run([
-        "schtasks", "/create", "/tn", _TASK_NAME,
-        "/tr", lc_bin, "/sc", "daily", "/st", time_str, "/f",
-    ], check=True)
-    print(f"已注册 Windows 计划任务，每天 {time_str} 自动同步。")
+
+    if sched.mode == "interval":
+        mins = sched.interval_seconds // 60
+        cmd = [
+            "schtasks", "/create", "/tn", _TASK_NAME,
+            "/tr", lc_bin, "/sc", "minute", "/mo", str(mins), "/f",
+        ]
+    else:
+        time_str = f"{sched.hour:02d}:{sched.minute:02d}"
+        cmd = [
+            "schtasks", "/create", "/tn", _TASK_NAME,
+            "/tr", lc_bin, "/sc", "daily", "/st", time_str, "/f",
+        ]
+
+    subprocess.run(cmd, check=True)
+    print(f"已注册 Windows 计划任务，{sched.human_str()}自动同步。")
     print(f"日志文件：{LOG_FILE}")
     print(f"查看状态：schtasks /query /tn {_TASK_NAME}")
 
@@ -228,12 +360,16 @@ def _status_windows():
         capture_output=True, text=True,
     )
     if result.returncode == 0:
+        sched = _load_schedule()
         print("状态：已注册")
+        if sched:
+            print(f"频率：{sched.human_str()}")
         for line in result.stdout.splitlines():
             if line.strip():
                 print(f"  {line.strip()}")
     else:
-        print("状态：未注册（运行 leetcode --daemon HH:MM 来启用）")
+        print("状态：未注册")
+        _print_help_hint()
     print(f"日志：{LOG_FILE}")
     _print_last_log()
 
@@ -243,8 +379,15 @@ def _status_windows():
 # ---------------------------------------------------------------------------
 
 
+def _print_help_hint():
+    print()
+    print("用法：leetcode --daemon <频率>")
+    print("  leetcode --daemon 30m     每 30 分钟")
+    print("  leetcode --daemon 1h      每小时")
+    print("  leetcode --daemon 23:00   每天 23:00")
+
+
 def _print_last_log():
-    """显示最近几行日志。"""
     if not LOG_FILE.exists():
         return
     lines = LOG_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -255,36 +398,28 @@ def _print_last_log():
             print(f"  {line}")
 
 
-def _parse_time(time_str: str) -> tuple[int, int]:
-    parts = time_str.split(":")
-    if len(parts) != 2:
-        raise ValueError
-    h, m = int(parts[0]), int(parts[1])
-    if not (0 <= h <= 23 and 0 <= m <= 59):
-        raise ValueError
-    return h, m
-
-
-def install_daemon(time_str: str):
-    """注册系统级每日定时任务。"""
+def install_daemon(schedule_str: str):
+    """解析调度格式并注册系统级定时任务。"""
     try:
-        hour, minute = _parse_time(time_str)
-    except ValueError:
-        print("错误：时间格式应为 HH:MM（例如 23:00）")
+        sched = parse_schedule(schedule_str)
+    except ValueError as e:
+        print(f"错误：{e}")
         sys.exit(1)
 
     system = platform.system()
     if system == "Darwin":
-        _install_macos(hour, minute)
+        _install_macos(sched)
     elif system == "Linux":
-        _install_linux(hour, minute)
+        _install_linux(sched)
     elif system == "Windows":
-        _install_windows(hour, minute)
+        _install_windows(sched)
     else:
         print(f"不支持的系统：{system}，请使用 --cron 前台模式。")
         sys.exit(1)
 
-    print("\n关闭终端后仍会在后台自动运行。")
+    _save_schedule(sched)
+
+    print(f"\n关闭终端后仍会在后台自动运行。")
     print("卸载：leetcode --daemon stop")
     print("查看：leetcode --daemon status")
 
@@ -300,6 +435,9 @@ def uninstall_daemon():
         _unload_windows()
     else:
         print(f"不支持的系统：{system}")
+
+    if SCHEDULE_FILE.exists():
+        SCHEDULE_FILE.unlink()
 
 
 def daemon_status():
