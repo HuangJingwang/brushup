@@ -234,24 +234,17 @@ def ensure_credentials(interactive: bool = True) -> dict:
 # 1. LeetCode API
 # ---------------------------------------------------------------------------
 
-RECENT_AC_QUERY = """
-query recentAcSubmissions($userSlug: String!, $limit: Int) {
-    recentACSubmissions(userSlug: $userSlug, limit: $limit) {
-        id
-        title
-        titleSlug
-        timestamp
-    }
-}
-"""
-
-RECENT_ALL_QUERY = """
-query recentSubmissions($userSlug: String!) {
-    recentSubmissions(userSlug: $userSlug) {
-        title
-        titleSlug
-        timestamp
-        statusDisplay
+SUBMISSION_LIST_QUERY = """
+query submissionList($offset: Int!, $limit: Int!, $questionSlug: String!) {
+    submissionList(offset: $offset, limit: $limit, questionSlug: $questionSlug) {
+        hasNext
+        submissions {
+            id
+            title
+            statusDisplay
+            timestamp
+            url
+        }
     }
 }
 """
@@ -266,31 +259,34 @@ def _make_headers(session: str, csrf: str) -> dict:
     }
 
 
-def fetch_recent_ac(username: str, session: str, csrf: str, limit: int = 80) -> list[dict]:
+def _fetch_submission_list(session: str, csrf: str, limit: int = 80) -> list[dict]:
+    """拉取最近提交列表，从 url 字段解析 titleSlug。"""
     headers = _make_headers(session, csrf)
     payload = {
-        "query": RECENT_AC_QUERY,
-        "variables": {"userSlug": username, "limit": limit},
+        "query": SUBMISSION_LIST_QUERY,
+        "variables": {"offset": 0, "limit": limit, "questionSlug": ""},
     }
     resp = requests.post(LEETCODE_API_URL, json=payload, headers=headers, timeout=15)
     resp.raise_for_status()
     data = resp.json()
     if "errors" in data:
         raise RuntimeError(f"LeetCode API 返回错误: {data['errors']}")
-    return data.get("data", {}).get("recentACSubmissions") or []
+    subs = data.get("data", {}).get("submissionList", {}).get("submissions") or []
+    for s in subs:
+        m = re.search(r"/problems/([^/]+)/submissions/", s.get("url", ""))
+        s["titleSlug"] = m.group(1) if m else ""
+    return subs
+
+
+def fetch_recent_ac(username: str, session: str, csrf: str, limit: int = 80) -> list[dict]:
+    subs = _fetch_submission_list(session, csrf, limit)
+    return [s for s in subs if s.get("statusDisplay") == "Accepted"]
 
 
 def fetch_recent_all(username: str, session: str, csrf: str) -> list[dict]:
     """拉取最近的所有提交（含失败），用于卡点检测。失败时返回空列表。"""
-    headers = _make_headers(session, csrf)
-    payload = {
-        "query": RECENT_ALL_QUERY,
-        "variables": {"userSlug": username},
-    }
     try:
-        resp = requests.post(LEETCODE_API_URL, json=payload, headers=headers, timeout=15)
-        data = resp.json()
-        return data.get("data", {}).get("recentSubmissions") or []
+        return _fetch_submission_list(session, csrf, limit=80)
     except Exception:
         return []
 
