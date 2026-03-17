@@ -52,7 +52,18 @@ leetcode --daemon 23:00     # 或每天固定时间
 leetcode
 ```
 
-自动拉取今日 AC 提交，匹配 Hot100 题目，智能判断当前轮次（R1→R5），在进度表中写入完成日期。同时追加每日打卡记录、刷新进度看板，完成后弹桌面通知。
+自动拉取今日 AC 提交，匹配 Hot100 题目，智能判断当前轮次（R1→R5），在进度表中写入完成日期。同时追加每日打卡记录、刷新进度看板。**仅在有新 AC 同步时弹桌面通知**，无 AC 时静默跳过。
+
+### 每日提醒
+
+```bash
+leetcode --remind              # 立即查看今日待刷/待复习题目
+leetcode --remind-daemon       # 注册每日提醒（10:00/17:00/22:00 自动推送）
+leetcode --remind-daemon status
+leetcode --remind-daemon stop
+```
+
+每天三个时间点自动推送桌面通知，提醒你今日需要复习的题目和推荐的新题，不错过任何复习窗口。
 
 ### 后台守护
 
@@ -149,6 +160,10 @@ leetcode --web 3000     # 自定义端口
 | `leetcode --daemon 23:00` | 每天固定时间后台同步 |
 | `leetcode --daemon status` | 查看后台任务状态 |
 | `leetcode --daemon stop` | 卸载后台定时任务 |
+| `leetcode --remind` | 查看今日待刷/待复习题目并推送通知 |
+| `leetcode --remind-daemon` | 注册每日提醒（10:00/17:00/22:00） |
+| `leetcode --remind-daemon status` | 查看提醒任务状态 |
+| `leetcode --remind-daemon stop` | 卸载提醒任务 |
 | `leetcode --cron 23:00` | 前台定时同步（终端需保持运行） |
 
 ## How It Works
