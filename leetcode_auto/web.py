@@ -363,93 +363,93 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 <nav class="sidebar">
   <h1><span>LeetForge</span></h1>
   <div class="nav-item active" data-tab="dashboard">
-    <span class="nav-icon">&#128200;</span><span>Dashboard</span>
+    <span class="nav-icon">&#128200;</span><span>总览</span>
   </div>
   <div class="nav-item" data-tab="chat">
-    <span class="nav-icon">&#128172;</span><span>AI Chat</span>
+    <span class="nav-icon">&#128172;</span><span>AI 对话</span>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="progress">
-    <span class="nav-icon">&#128221;</span><span>Progress</span>
+    <span class="nav-icon">&#128221;</span><span>进度表</span>
   </div>
   <div class="nav-item" data-tab="review" id="nav-review">
-    <span class="nav-icon">&#128214;</span><span>Review</span>
+    <span class="nav-icon">&#128214;</span><span>待复习</span>
   </div>
   <div class="nav-item" data-tab="checkin">
-    <span class="nav-icon">&#128197;</span><span>Check-in</span>
+    <span class="nav-icon">&#128197;</span><span>打卡记录</span>
   </div>
   <div class="nav-item" data-tab="optimize" id="nav-optimize">
-    <span class="nav-icon">&#9889;</span><span>Optimize</span>
+    <span class="nav-icon">&#9889;</span><span>代码优化</span>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="resume">
-    <span class="nav-icon">&#128196;</span><span>Resume</span>
+    <span class="nav-icon">&#128196;</span><span>简历优化</span>
   </div>
   <div class="sidebar-footer">
-    <div class="sidebar-info">Data: __TODAY__</div>
+    <div class="sidebar-info">数据更新：__TODAY__</div>
   </div>
 </nav>
 
 <div class="main">
 
-<!-- ==================== Dashboard ==================== -->
+<!-- ==================== 总览 ==================== -->
 <div class="tab-content active" id="tab-dashboard">
-  <div class="page-title"><span class="icon">&#127919;</span> Dashboard</div>
+  <div class="page-title"><span class="icon">&#127919;</span> 总览</div>
   <div class="stats-row">
-    <div class="stat-card"><div class="num">__DONE_ROUNDS__<span class="num-sub">/ __TOTAL_ROUNDS__</span></div><div class="label">completed round</div></div>
-    <div class="stat-card"><div class="num">__RATE__%</div><div class="label">completion rate</div></div>
-    <div class="stat-card"><div class="num">__DONE_ALL__<span class="num-sub">/ __TOTAL__</span></div><div class="label">5 rounds pass</div></div>
-    <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label">streak days</div></div>
-    <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label">total check-in days</div></div>
-    <div class="stat-card"><div class="num num-sm">__EST__</div><div class="label">estimated completion</div></div>
+    <div class="stat-card"><div class="num">__DONE_ROUNDS__<span class="num-sub">/ __TOTAL_ROUNDS__</span></div><div class="label">已完成轮次</div></div>
+    <div class="stat-card"><div class="num">__RATE__%</div><div class="label">完成率</div></div>
+    <div class="stat-card"><div class="num">__DONE_ALL__<span class="num-sub">/ __TOTAL__</span></div><div class="label">5 轮全通</div></div>
+    <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label">连续打卡</div></div>
+    <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label">累计打卡</div></div>
+    <div class="stat-card"><div class="num num-sm">__EST__</div><div class="label">预估完成</div></div>
   </div>
   <div class="today-grid">
     <div class="today-card">
-      <h2>Today: New Problems <span class="count count-accent" id="new-count"></span></h2>
+      <h2>今日新题 <span class="count count-accent" id="new-count"></span></h2>
       <ul class="today-list" id="today-new"></ul>
     </div>
     <div class="today-card">
-      <h2>Today: Review Problems <span class="count count-red" id="review-count-dash"></span></h2>
+      <h2>今日复习 <span class="count count-red" id="review-count-dash"></span></h2>
       <ul class="today-list" id="today-review"></ul>
     </div>
   </div>
   <div class="grid">
-    <div class="card"><h2>Completion Rate</h2><div id="gauge" class="chart"></div></div>
-    <div class="card"><h2>Round Progress</h2><div id="rounds" class="chart"></div></div>
-    <div class="card"><h2>Category Radar</h2><div id="radar" class="chart"></div></div>
-    <div class="card"><h2>Daily Trend</h2><div id="trend" class="chart"></div></div>
-    <div class="card card-full"><h2>Heatmap (365 days)</h2><div id="heatmap" class="chart-lg"></div></div>
+    <div class="card"><h2>完成率</h2><div id="gauge" class="chart"></div></div>
+    <div class="card"><h2>各轮进度</h2><div id="rounds" class="chart"></div></div>
+    <div class="card"><h2>分类能力</h2><div id="radar" class="chart"></div></div>
+    <div class="card"><h2>每日趋势</h2><div id="trend" class="chart"></div></div>
+    <div class="card card-full"><h2>刷题热力图（近 365 天）</h2><div id="heatmap" class="chart-lg"></div></div>
   </div>
 </div>
 
-<!-- ==================== Progress ==================== -->
+<!-- ==================== 进度表 ==================== -->
 <div class="tab-content" id="tab-progress">
-  <div class="page-title"><span class="icon">&#128221;</span> Progress <span class="table-count" id="table-count"></span></div>
+  <div class="page-title"><span class="icon">&#128221;</span> 进度表 <span class="table-count" id="table-count"></span></div>
   <div class="table-controls">
-    <input type="text" id="search-input" placeholder="Search...">
+    <input type="text" id="search-input" placeholder="搜索题目...">
     <select id="filter-difficulty">
-      <option value="">All</option>
-      <option value="easy">Easy</option>
-      <option value="medium">Medium</option>
-      <option value="hard">Hard</option>
+      <option value="">全部难度</option>
+      <option value="easy">简单</option>
+      <option value="medium">中等</option>
+      <option value="hard">困难</option>
     </select>
-    <select id="filter-category"><option value="">All</option></select>
+    <select id="filter-category"><option value="">全部分类</option></select>
     <select id="filter-status">
-      <option value="">All</option>
-      <option value="not-started">Not Started</option>
-      <option value="in-progress">In Progress</option>
-      <option value="completed">Completed</option>
+      <option value="">全部状态</option>
+      <option value="not-started">未开始</option>
+      <option value="in-progress">进行中</option>
+      <option value="completed">已完成</option>
     </select>
-    <button id="clear-filters" class="clear-btn" style="display:none;">Clear</button>
+    <button id="clear-filters" class="clear-btn" style="display:none;">清除筛选</button>
   </div>
   <div class="table-wrapper">
     <table class="progress-table">
       <thead>
         <tr>
-          <th>#</th><th>Title</th><th>Difficulty</th><th>Category</th>
+          <th>#</th><th>题目</th><th>难度</th><th>分类</th>
           <th class="round-cell">R1</th><th class="round-cell">R2</th>
           <th class="round-cell">R3</th><th class="round-cell">R4</th>
-          <th class="round-cell">R5</th><th>Status</th>
+          <th class="round-cell">R5</th><th>状态</th>
         </tr>
       </thead>
       <tbody id="progress-body"></tbody>
@@ -457,63 +457,63 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   </div>
 </div>
 
-<!-- ==================== Checkin ==================== -->
+<!-- ==================== 打卡记录 ==================== -->
 <div class="tab-content" id="tab-checkin">
-  <div class="page-title"><span class="icon">&#128197;</span> Check-in Record</div>
+  <div class="page-title"><span class="icon">&#128197;</span> 打卡记录</div>
   <div class="grid">
-    <div class="card card-full"><h2>Daily Trend</h2><div id="checkin-trend" class="chart"></div></div>
+    <div class="card card-full"><h2>每日趋势</h2><div id="checkin-trend" class="chart"></div></div>
   </div>
   <div class="timeline" id="checkin-timeline"></div>
 </div>
 
-<!-- ==================== Review ==================== -->
+<!-- ==================== 待复习 ==================== -->
 <div class="tab-content" id="tab-review">
-  <div class="page-title"><span class="icon">&#128214;</span> Review <span class="table-count" id="review-count"></span></div>
+  <div class="page-title"><span class="icon">&#128214;</span> 待复习 <span class="table-count" id="review-count"></span></div>
   <div class="card" id="review-card">
     <ul class="review-list" id="review-list"></ul>
   </div>
 </div>
 
-<!-- ==================== Optimize ==================== -->
+<!-- ==================== 代码优化 ==================== -->
 <div class="tab-content" id="tab-optimize">
-  <div class="page-title"><span class="icon">&#9889;</span> Optimization <span class="table-count" id="opt-count"></span></div>
+  <div class="page-title"><span class="icon">&#9889;</span> 代码优化 <span class="table-count" id="opt-count"></span></div>
   <div id="optimize-list"></div>
 </div>
 
-<!-- ==================== Resume ==================== -->
+<!-- ==================== 简历优化 ==================== -->
 <div class="tab-content" id="tab-resume">
-  <div class="page-title"><span class="icon">&#128196;</span> Resume</div>
+  <div class="page-title"><span class="icon">&#128196;</span> 简历优化</div>
   <div class="resume-layout">
     <div class="resume-left">
       <div class="resume-actions">
-        <a href="/api/resume/template" download="resume_template.tex">Download LaTeX Template</a>
-        <button class="primary" id="resume-analyze-btn">AI Analyze</button>
-        <button id="resume-save-btn">Save</button>
+        <a href="/api/resume/template" download="resume_template.tex">下载 LaTeX 模板</a>
+        <button class="primary" id="resume-analyze-btn">AI 分析</button>
+        <button id="resume-save-btn">保存</button>
       </div>
-      <textarea class="resume-textarea" id="resume-input" placeholder="Paste your resume content here...&#10;&#10;Supports plain text or LaTeX format.&#10;You can also download the LaTeX template on the left, fill in your info, and paste it here."></textarea>
+      <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容...&#10;&#10;支持纯文本或 LaTeX 格式。&#10;可先下载左上方的 LaTeX 模板，填入你的信息后粘贴到此处。"></textarea>
     </div>
     <div class="resume-right">
       <div class="resume-analysis" id="resume-analysis">
         <div class="resume-empty">
           <div class="icon">&#128196;</div>
-          <p>Paste your resume on the left, then click "AI Analyze"</p>
+          <p>在左侧粘贴简历内容，然后点击「AI 分析」</p>
         </div>
       </div>
       <div class="resume-chat-box">
         <div class="resume-chat-messages" id="resume-chat-messages"></div>
         <div class="chat-input-row">
-          <input type="text" id="resume-chat-input" placeholder="Ask AI for resume improvement..." autocomplete="off">
-          <button id="resume-chat-send">Send</button>
-          <button id="resume-chat-clear" style="background:var(--border);">Clear</button>
+          <input type="text" id="resume-chat-input" placeholder="向 AI 提问改进建议..." autocomplete="off">
+          <button id="resume-chat-send">发送</button>
+          <button id="resume-chat-clear" style="background:var(--border);">清空</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ==================== AI Chat ==================== -->
+<!-- ==================== AI 对话 ==================== -->
 <div class="tab-content" id="tab-chat">
-  <div class="page-title"><span class="icon">&#128172;</span> AI Chat</div>
+  <div class="page-title"><span class="icon">&#128172;</span> AI 对话</div>
   <div class="chat-container">
     <div class="chat-messages" id="chat-messages">
       <div class="chat-msg assistant"><div class="chat-bubble">你好！我是 LeetForge AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？</div></div>
@@ -622,16 +622,16 @@ if(D.daily.length>0){
   var revC=D.daily.map(d=>d[2]);
   echarts.init(document.getElementById('trend')).setOption({
     tooltip:{trigger:'axis'},
-    legend:{data:['New','Review'],textStyle:{color:'#8b949e'}},
+    legend:{data:['新题','复习'],textStyle:{color:'#8b949e'}},
     xAxis:{type:'category',data:dates,axisLabel:{color:'#8b949e'},axisLine:{lineStyle:{color:'#30363d'}}},
     yAxis:{type:'value',axisLabel:{color:'#8b949e'},splitLine:{lineStyle:{color:'#21262d'}}},
     series:[
-      {name:'New',type:'bar',stack:'total',data:newC,itemStyle:{color:'#58a6ff'}},
-      {name:'Review',type:'bar',stack:'total',data:revC,itemStyle:{color:'#3fb950'}}
+      {name:'新题',type:'bar',stack:'total',data:newC,itemStyle:{color:'#58a6ff'}},
+      {name:'复习',type:'bar',stack:'total',data:revC,itemStyle:{color:'#3fb950'}}
     ]
   });
 } else {
-  document.getElementById('trend').innerHTML='<div class="empty-state"><p>no data yet</p></div>';
+  document.getElementById('trend').innerHTML='<div class="empty-state"><p>暂无数据</p></div>';
 }
 
 // Heatmap
@@ -640,7 +640,7 @@ if(D.daily.length>0){
   var today=new Date();
   var start=new Date(today);start.setDate(start.getDate()-365);
   chart.setOption({
-    tooltip:{formatter:function(p){return p.value[0]+': '+p.value[1]+' solved';}},
+    tooltip:{formatter:function(p){return p.value[0]+': '+p.value[1]+' 题';}},
     visualMap:{min:0,max:8,show:false,inRange:{color:['#161b22','#0e4429','#006d32','#26a641','#39d353']}},
     calendar:{
       range:[start.toISOString().slice(0,10),today.toISOString().slice(0,10)],
@@ -671,7 +671,7 @@ window.addEventListener('resize',function(){
   var showNew=todos.slice(0,10);
   newCount.textContent=todos.length;
   if(showNew.length===0){
-    newList.innerHTML='<li style="color:var(--dim)">R1 all completed!</li>';
+    newList.innerHTML='<li style="color:var(--dim)">R1 已全部完成！</li>';
   } else {
     var h='';
     showNew.forEach(function(t){
@@ -679,7 +679,7 @@ window.addEventListener('resize',function(){
       h+='<li><a href="https://leetcode.cn/problems/'+t.slug+'/" target="_blank">'+t.title+'</a>'
         +'<div class="today-meta"><span class="tag tag-cat">'+t.category+'</span><span class="tag '+dc+'">'+t.difficulty+'</span></div></li>';
     });
-    if(todos.length>10) h+='<li style="color:var(--dim)">... '+todos.length+' problems remaining</li>';
+    if(todos.length>10) h+='<li style="color:var(--dim)">... 共 '+todos.length+' 题待完成</li>';
     newList.innerHTML=h;
   }
 
@@ -693,7 +693,7 @@ window.addEventListener('resize',function(){
   } else {
     var h='';
     reviews.forEach(function(r){
-      var status=r.overdue>0?'<span class="tag tag-review">overdue '+r.overdue+'d</span>':'<span class="tag tag-new">due today</span>';
+      var status=r.overdue>0?'<span class="tag tag-review">逾期 '+r.overdue+' 天</span>':'<span class="tag tag-new">今日到期</span>';
       h+='<li><span>'+r.title+'</span><div class="today-meta"><span class="tag tag-cat">'+r.round+'</span>'+status+'</div></li>';
     });
     revList.innerHTML=h;
@@ -773,8 +773,8 @@ renderTable();
 (function(){
   var container=document.getElementById('checkin-timeline');
   if(D.checkins.length===0){
-    container.innerHTML='<div class="empty-state"><div class="icon">&#128197;</div><p>no data yet</p></div>';
-    document.getElementById('checkin-trend').innerHTML='<div class="empty-state"><p>no data yet</p></div>';
+    container.innerHTML='<div class="empty-state"><div class="icon">&#128197;</div><p>暂无数据</p></div>';
+    document.getElementById('checkin-trend').innerHTML='<div class="empty-state"><p>暂无数据</p></div>';
     return;
   }
   var html='';
@@ -782,9 +782,9 @@ renderTable();
     html+='<div class="timeline-item'+(c.total===0?' empty':'')+'">'
       +'<div class="timeline-date">'+c.date+'</div>'
       +'<div class="timeline-stats">'
-      +'<span class="timeline-new">New '+c.new+'</span>'
-      +'<span class="timeline-review">Review '+c.review+'</span>'
-      +'<span class="timeline-total">Total '+c.total+'</span>'
+      +'<span class="timeline-new">新题 '+c.new+'</span>'
+      +'<span class="timeline-review">复习 '+c.review+'</span>'
+      +'<span class="timeline-total">合计 '+c.total+'</span>'
       +'</div>'
       +'</div>';
   });
@@ -796,12 +796,12 @@ renderTable();
   var revC=D.checkins.slice().reverse().slice(-30).map(c=>c.review);
   echarts.init(document.getElementById('checkin-trend')).setOption({
     tooltip:{trigger:'axis'},
-    legend:{data:['New','Review'],textStyle:{color:'#8b949e'}},
+    legend:{data:['新题','复习'],textStyle:{color:'#8b949e'}},
     xAxis:{type:'category',data:dates,axisLabel:{color:'#8b949e',rotate:45},axisLine:{lineStyle:{color:'#30363d'}}},
     yAxis:{type:'value',axisLabel:{color:'#8b949e'},splitLine:{lineStyle:{color:'#21262d'}}},
     series:[
-      {name:'New',type:'line',data:newC,smooth:true,itemStyle:{color:'#58a6ff'},areaStyle:{color:'rgba(88,166,255,0.1)'}},
-      {name:'Review',type:'line',data:revC,smooth:true,itemStyle:{color:'#3fb950'},areaStyle:{color:'rgba(63,185,80,0.1)'}}
+      {name:'新题',type:'line',data:newC,smooth:true,itemStyle:{color:'#58a6ff'},areaStyle:{color:'rgba(88,166,255,0.1)'}},
+      {name:'复习',type:'line',data:revC,smooth:true,itemStyle:{color:'#3fb950'},areaStyle:{color:'rgba(63,185,80,0.1)'}}
     ]
   });
 })();
@@ -811,14 +811,14 @@ renderTable();
   var list=document.getElementById('review-list');
   var count=document.getElementById('review-count');
   if(!D.review_due||D.review_due.length===0){
-    document.getElementById('review-card').innerHTML='<div class="empty-state"><div class="icon">&#9989;</div><p>no reviews due, keep it up!</p></div>';
+    document.getElementById('review-card').innerHTML='<div class="empty-state"><div class="icon">&#9989;</div><p>今日无待复习题目，继续保持！</p></div>';
     count.textContent='(0)';
     return;
   }
   count.textContent='('+D.review_due.length+')';
   var html='';
   D.review_due.forEach(function(r){
-    var status=r.overdue>0?'<span class="overdue">overdue '+r.overdue+' day(s)</span>':'<span class="due-today">due today</span>';
+    var status=r.overdue>0?'<span class="overdue">逾期 '+r.overdue+' 天</span>':'<span class="due-today">今日到期</span>';
     html+='<li><div><span class="review-round">'+r.round+'</span> '+r.title+'</div>'+status+'</li>';
   });
   list.innerHTML=html;
@@ -838,7 +838,7 @@ function mdToHtml(md){
   var container=document.getElementById('optimize-list');
   var count=document.getElementById('opt-count');
   if(!D.optimizations||D.optimizations.length===0){
-    container.innerHTML='<div class="empty-state"><div class="icon">&#9889;</div><p>all submissions are well optimized!</p></div>';
+    container.innerHTML='<div class="empty-state"><div class="icon">&#9889;</div><p>所有提交性能表现良好，无需优化</p></div>';
     count.textContent='(0)';
     return;
   }
@@ -855,7 +855,7 @@ function mdToHtml(md){
     var aiHtml='';
     if(o.ai_analysis){
       aiHtml='<div class="ai-section">'
-        +'<div class="ai-label">AI Analysis <button class="ai-toggle" onclick="var b=document.getElementById(\'ai-'+i+'\');b.style.display=b.style.display===\'none\'?\'block\':\'none\';this.textContent=b.style.display===\'none\'?\'Show\':\'Hide\';">Hide</button></div>'
+        +'<div class="ai-label">AI 分析 <button class="ai-toggle" onclick="var b=document.getElementById(\'ai-'+i+'\');b.style.display=b.style.display===\'none\'?\'block\':\'none\';this.textContent=b.style.display===\'none\'?\'展开\':\'收起\';">收起</button></div>'
         +'<div class="ai-content" id="ai-'+i+'">'+mdToHtml(o.ai_analysis)+'</div>'
         +'</div>';
     }
@@ -863,12 +863,12 @@ function mdToHtml(md){
     html+='<div class="opt-card">'
       +'<div class="opt-header"><span class="opt-title">'+o.title+'</span><span class="opt-lang">'+(o.lang||'')+'</span></div>'
       +'<div class="opt-metrics">'
-      +'<div class="opt-metric">Runtime: '+(o.runtime||'N/A')+' <div class="pct-bar"><div class="pct-fill '+rtClass+'" style="width:'+rtPct+'%"></div></div> '+rtPct.toFixed(1)+'%</div>'
-      +'<div class="opt-metric">Memory: '+(o.memory||'N/A')+' <div class="pct-bar"><div class="pct-fill '+memClass+'" style="width:'+memPct+'%"></div></div> '+memPct.toFixed(1)+'%</div>'
+      +'<div class="opt-metric">运行时间：'+(o.runtime||'N/A')+' <div class="pct-bar"><div class="pct-fill '+rtClass+'" style="width:'+rtPct+'%"></div></div> '+rtPct.toFixed(1)+'%</div>'
+      +'<div class="opt-metric">内存：'+(o.memory||'N/A')+' <div class="pct-bar"><div class="pct-fill '+memClass+'" style="width:'+memPct+'%"></div></div> '+memPct.toFixed(1)+'%</div>'
       +'</div>'
       +(sugs?'<ul class="opt-suggestions">'+sugs+'</ul>':'')
       +aiHtml
-      +(o.code?'<button class="code-toggle" onclick="var b=document.getElementById(\'code-'+i+'\');b.classList.toggle(\'show\');this.textContent=b.classList.contains(\'show\')?\'Hide Code\':\'Show Code\';">Show Code</button><pre class="code-block" id="code-'+i+'">'+o.code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>':'')
+      +(o.code?'<button class="code-toggle" onclick="var b=document.getElementById(\'code-'+i+'\');b.classList.toggle(\'show\');this.textContent=b.classList.contains(\'show\')?\'收起代码\':\'查看代码\';">查看代码</button><pre class="code-block" id="code-'+i+'">'+o.code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>':'')
       +'</div>';
   });
   container.innerHTML=html;
@@ -910,26 +910,26 @@ function mdToHtml(md){
   saveBtn.addEventListener('click',function(){
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'save',content:input.value})
-    }).then(r=>r.json()).then(function(){saveBtn.textContent='Saved!';setTimeout(function(){saveBtn.textContent='Save';},1500);});
+    }).then(r=>r.json()).then(function(){saveBtn.textContent='已保存';setTimeout(function(){saveBtn.textContent='保存';},1500);});
   });
 
   analyzeBtn.addEventListener('click',function(){
     var content=input.value.trim();
-    if(!content){alert('Please paste your resume first.');return;}
+    if(!content){alert('请先粘贴简历内容');return;}
     analyzeBtn.disabled=true;
-    analyzeBtn.textContent='Analyzing...';
-    analysisDiv.innerHTML='<div class="resume-empty"><div class="chat-typing">AI is analyzing your resume...</div></div>';
+    analyzeBtn.textContent='分析中...';
+    analysisDiv.innerHTML='<div class="resume-empty"><div class="chat-typing">AI 正在分析你的简历...</div></div>';
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'analyze',content:content})
     }).then(r=>r.json()).then(function(d){
       analyzeBtn.disabled=false;
-      analyzeBtn.textContent='AI Analyze';
+      analyzeBtn.textContent='AI 分析';
       if(d.analysis) analysisDiv.innerHTML=mdToHtml(d.analysis);
-      else analysisDiv.innerHTML='<div class="resume-empty"><p>'+(d.error||'Analysis failed')+'</p></div>';
+      else analysisDiv.innerHTML='<div class="resume-empty"><p>'+(d.error||'分析失败')+'</p></div>';
     }).catch(function(){
       analyzeBtn.disabled=false;
-      analyzeBtn.textContent='AI Analyze';
-      analysisDiv.innerHTML='<div class="resume-empty"><p>Network error</p></div>';
+      analyzeBtn.textContent='AI 分析';
+      analysisDiv.innerHTML='<div class="resume-empty"><p>网络错误</p></div>';
     });
   });
 
@@ -941,7 +941,7 @@ function mdToHtml(md){
     chatSend.disabled=true;
     var typing=document.createElement('div');
     typing.className='chat-msg assistant';
-    typing.innerHTML='<div class="chat-bubble chat-typing">thinking...</div>';
+    typing.innerHTML='<div class="chat-bubble chat-typing">思考中...</div>';
     chatMsgs.appendChild(typing);
     chatMsgs.scrollTop=chatMsgs.scrollHeight;
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -956,12 +956,12 @@ function mdToHtml(md){
       } else {
         appendResumeMsg('assistant',d.error||'Failed');
       }
-    }).catch(function(){chatMsgs.removeChild(typing);chatSend.disabled=false;appendResumeMsg('assistant','Network error');});
+    }).catch(function(){chatMsgs.removeChild(typing);chatSend.disabled=false;appendResumeMsg('assistant','网络错误');});
   }
   chatSend.addEventListener('click',sendResumeChat);
   chatInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendResumeChat();}});
   chatClear.addEventListener('click',function(){
-    if(!confirm('Clear resume chat history?')) return;
+    if(!confirm('确定清空简历对话记录？')) return;
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'clear_chat'})
     }).then(function(){resumeHistory=[];chatMsgs.innerHTML='';});
@@ -1007,7 +1007,7 @@ function mdToHtml(md){
     btn.disabled=true;
     var typing=document.createElement('div');
     typing.className='chat-msg assistant';
-    typing.innerHTML='<div class="chat-bubble chat-typing">thinking...</div>';
+    typing.innerHTML='<div class="chat-bubble chat-typing">思考中...</div>';
     messages.appendChild(typing);
     messages.scrollTop=messages.scrollHeight;
 
@@ -1033,7 +1033,7 @@ function mdToHtml(md){
   }
 
   clearBtn.addEventListener('click',function(){
-    if(!confirm('清空所有对话记录？')) return;
+    if(!confirm('确定清空所有对话记录？')) return;
     fetch('/api/chat/history',{
       method:'POST',
       headers:{'Content-Type':'application/json'},

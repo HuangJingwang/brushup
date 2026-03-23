@@ -19,29 +19,33 @@ RESUME_CHAT_FILE = DATA_DIR / "resume_chat_history.json"
 # LaTeX 简历模板
 # ---------------------------------------------------------------------------
 
-LATEX_TEMPLATE = r"""\documentclass[11pt,a4paper]{article}
+LATEX_TEMPLATE = r"""%!TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
 
 % ==================== 宏包 ====================
-\usepackage[margin=1.5cm]{geometry}
+\usepackage[margin=1.8cm]{geometry}
+\usepackage{ctex}                    % 中文支持（XeLaTeX 编译）
 \usepackage{titlesec}
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
-\usepackage{fontspec}
 \usepackage{tabularx}
+\usepackage{multicol}
 
 % ==================== 样式 ====================
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 \definecolor{accent}{HTML}{2563EB}
-\hypersetup{colorlinks=true,urlcolor=accent}
+\definecolor{textgray}{HTML}{4B5563}
+\hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent}
 
-\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{12pt}{6pt}
+\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\color{accent}\titlerule]
+\titlespacing{\section}{0pt}{14pt}{6pt}
 
+% 条目宏：公司/学校 | 角色 | 补充 | 时间
 \newcommand{\entry}[4]{%
-  \textbf{#1} \hfill \textit{#2} \\
-  \textit{#3} \hfill #4 \vspace{4pt}
+  \textbf{#1} \hfill {\small\color{textgray}#4} \\
+  {\color{textgray}#2\hfill #3} \vspace{2pt}
 }
 
 % ==================== 正文 ====================
@@ -49,62 +53,64 @@ LATEX_TEMPLATE = r"""\documentclass[11pt,a4paper]{article}
 
 % ---------- 个人信息 ----------
 \begin{center}
-  {\LARGE\bfseries 你的名字} \\[6pt]
-  \href{mailto:your@email.com}{your@email.com} \quad
-  \href{tel:+8613800138000}{138-0013-8000} \quad
-  \href{https://github.com/yourname}{GitHub} \quad
-  \href{https://linkedin.com/in/yourname}{LinkedIn}
+  {\LARGE\bfseries 张三} \\[6pt]
+  {\color{textgray}
+    \href{mailto:zhangsan@example.com}{zhangsan@example.com} $\cdot$
+    138-0000-0000 $\cdot$
+    \href{https://github.com/zhangsan}{github.com/zhangsan} $\cdot$
+    \href{https://linkedin.com/in/zhangsan}{LinkedIn}
+  }
 \end{center}
 
 % ---------- 教育背景 ----------
-\section{Education}
+\section{教育背景}
 
-\entry{XX 大学}{硕士 · 计算机科学与技术}{GPA: 3.8/4.0}{2022 -- 2025}
-\begin{itemize}[nosep,leftmargin=*]
-  \item 核心课程：算法设计与分析、分布式系统、机器学习、数据库系统
-  \item 奖学金：一等学业奖学金（前 5\%）
+\entry{XX 大学}{计算机科学与技术 · 硕士}{GPA：3.8 / 4.0}{2022.09 -- 2025.06}
+\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
+  \item 核心课程：高级算法、分布式系统、数据库内核、机器学习
+  \item 一等学业奖学金（前 5\%），校级优秀毕业生
 \end{itemize}
 
 \vspace{4pt}
-\entry{XX 大学}{学士 · 软件工程}{GPA: 3.6/4.0}{2018 -- 2022}
+\entry{XX 大学}{软件工程 · 学士}{GPA：3.6 / 4.0}{2018.09 -- 2022.06}
 
-% ---------- 工作经历 ----------
-\section{Work Experience}
+% ---------- 工作/实习经历 ----------
+\section{工作经历}
 
-\entry{XX 科技有限公司}{后端开发工程师（实习）}{技术栈：Go, MySQL, Redis, Kafka}{2024.06 -- 2024.09}
-\begin{itemize}[nosep,leftmargin=*]
-  \item 负责用户中心微服务重构，将单体接口拆分为 5 个独立服务，QPS 提升 40\%
-  \item 设计并实现基于 Redis 的分布式限流方案，支撑日均 500 万次 API 调用
-  \item 优化慢查询 SQL 12 条，P99 延迟从 800ms 降至 120ms
+\entry{XX 科技有限公司}{后端开发工程师（实习）}{Go / MySQL / Redis / Kafka}{2024.06 -- 2024.09}
+\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
+  \item 主导用户中心微服务重构，将单体服务拆分为 5 个独立模块，接口 QPS 提升 40\%
+  \item 设计基于 Redis + Lua 的分布式限流方案，稳定支撑日均 500 万次 API 调用
+  \item 定位并优化 12 条慢查询 SQL，核心接口 P99 延迟从 800ms 降至 120ms
 \end{itemize}
 
 % ---------- 项目经历 ----------
-\section{Projects}
+\section{项目经历}
 
-\entry{分布式键值存储引擎}{个人项目}{Go, Raft, LSM-Tree}{2024.03 -- 2024.05}
-\begin{itemize}[nosep,leftmargin=*]
-  \item 基于 Raft 共识算法实现多节点数据复制，支持自动选主和日志压缩
-  \item 存储层采用 LSM-Tree 结构，写入吞吐量达 10 万 ops/s
-  \item 编写完整的单元测试和混沌测试，代码覆盖率 85\%
+\entry{分布式键值存储引擎}{个人项目 · Go}{Raft / LSM-Tree / gRPC}{2024.03 -- 2024.05}
+\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
+  \item 基于 Raft 共识算法实现 3 节点数据复制，支持自动选主、日志压缩和快照恢复
+  \item 存储层采用 LSM-Tree + WAL 架构，写入吞吐量达 10 万 ops/s
+  \item 完整单元测试 + 混沌测试（网络分区、节点宕机），代码覆盖率 85\%
 \end{itemize}
 
 \vspace{4pt}
-\entry{LeetForge — LeetCode 刷题锻造台}{开源项目}{Python, ECharts, REST API}{2025.01 -- 至今}
-\begin{itemize}[nosep,leftmargin=*]
-  \item 自动同步 LeetCode 刷题记录，基于间隔重复算法智能推送复习计划
-  \item 集成 AI 代码分析，自动对比官方题解给出优化建议
-  \item 交互式 Web 看板，6 标签页覆盖进度追踪、数据可视化、AI 对话
+\entry{LeetForge — LeetCode 刷题锻造台}{开源项目 · Python}{ECharts / GraphQL / AI}{2025.01 -- 至今}
+\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
+  \item 自动同步 LeetCode 刷题记录，基于间隔重复算法推送复习计划
+  \item 接入 AI 对比官方题解，自动分析代码复杂度并给出优化建议
+  \item 交互式 Web 看板（7 标签页），涵盖进度追踪、数据可视化、AI 对话
 \end{itemize}
 
-% ---------- 技能 ----------
-\section{Skills}
+% ---------- 专业技能 ----------
+\section{专业技能}
 
-\begin{tabularx}{\textwidth}{@{}lX@{}}
-  \textbf{Languages} & Go, Python, Java, C++, SQL, JavaScript/TypeScript \\
-  \textbf{Frameworks} & Gin, Spring Boot, React, gRPC, Protobuf \\
-  \textbf{Infrastructure} & MySQL, Redis, Kafka, Docker, Kubernetes, Linux \\
-  \textbf{Tools} & Git, CI/CD, Prometheus, Grafana, Nginx \\
-  \textbf{Algorithms} & LeetCode Hot100 × 5 轮（LeetForge 记录），ACM 省赛银牌 \\
+\begin{tabularx}{\textwidth}{@{}l@{\hspace{12pt}}X@{}}
+  \textbf{编程语言} & Go, Python, Java, C++, SQL, JavaScript / TypeScript \\[2pt]
+  \textbf{框架 / 中间件} & Gin, Spring Boot, React, gRPC, Protobuf \\[2pt]
+  \textbf{基础设施} & MySQL, Redis, Kafka, Docker, Kubernetes, Linux \\[2pt]
+  \textbf{工具链} & Git, GitHub Actions, Prometheus, Grafana, Nginx \\[2pt]
+  \textbf{算法能力} & LeetCode Hot100 $\times$ 5 轮，ACM 省赛银牌 \\
 \end{tabularx}
 
 \end{document}
