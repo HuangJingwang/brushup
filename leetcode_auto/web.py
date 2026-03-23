@@ -279,6 +279,35 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .tag-new { background:rgba(88,166,255,0.12); color:var(--accent); }
 .tag-cat { background:rgba(139,148,158,0.12); color:var(--dim); }
 
+/* Resume */
+.resume-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 120px); }
+.resume-left,.resume-right { display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+.resume-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.resume-actions button,.resume-actions a {
+  background:var(--card); border:1px solid var(--border); color:var(--text); padding:8px 16px;
+  border-radius:6px; font-size:13px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+}
+.resume-actions button:hover,.resume-actions a:hover { border-color:var(--accent); color:var(--accent); }
+.resume-actions .primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.resume-actions .primary:hover { opacity:0.9; }
+.resume-textarea { flex:1; min-height:200px; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:12px; border-radius:8px; font-family:'SF Mono',Monaco,monospace; font-size:13px; line-height:1.6; resize:none; outline:none; }
+.resume-textarea:focus { border-color:var(--accent); }
+.resume-textarea::placeholder { color:var(--border); }
+.resume-analysis { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; overflow-y:auto; line-height:1.7; font-size:14px; }
+.resume-analysis h3 { color:var(--accent); font-size:14px; margin:12px 0 4px; }
+.resume-analysis h3:first-child { margin-top:0; }
+.resume-analysis ul,.resume-analysis ol { margin-left:18px; }
+.resume-analysis li { margin:3px 0; }
+.resume-analysis strong { color:var(--text); }
+.resume-analysis code { background:var(--bg); padding:1px 4px; border-radius:3px; font-size:12px; }
+.resume-analysis blockquote { border-left:3px solid var(--accent); padding-left:10px; color:var(--dim); margin:8px 0; }
+.resume-chat-box { border-top:1px solid var(--border); padding-top:12px; }
+.resume-chat-messages { max-height:300px; overflow-y:auto; margin-bottom:8px; }
+.resume-score { display:inline-block; font-size:32px; font-weight:bold; color:var(--accent); }
+.resume-empty { text-align:center; padding:40px; color:var(--dim); }
+.resume-empty .icon { font-size:40px; margin-bottom:12px; }
+@media (max-width:768px) { .resume-layout { grid-template-columns:1fr; height:auto; } }
+
 /* Chat */
 .chat-container { display:flex; flex-direction:column; height:calc(100vh - 120px); }
 .chat-messages { flex:1; overflow-y:auto; padding:8px 0; }
@@ -351,6 +380,10 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   </div>
   <div class="nav-item" data-tab="optimize" id="nav-optimize">
     <span class="nav-icon">&#9889;</span><span>Optimize</span>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-item" data-tab="resume">
+    <span class="nav-icon">&#128196;</span><span>Resume</span>
   </div>
   <div class="sidebar-footer">
     <div class="sidebar-info">Data: __TODAY__</div>
@@ -445,6 +478,37 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 <div class="tab-content" id="tab-optimize">
   <div class="page-title"><span class="icon">&#9889;</span> Optimization <span class="table-count" id="opt-count"></span></div>
   <div id="optimize-list"></div>
+</div>
+
+<!-- ==================== Resume ==================== -->
+<div class="tab-content" id="tab-resume">
+  <div class="page-title"><span class="icon">&#128196;</span> Resume</div>
+  <div class="resume-layout">
+    <div class="resume-left">
+      <div class="resume-actions">
+        <a href="/api/resume/template" download="resume_template.tex">Download LaTeX Template</a>
+        <button class="primary" id="resume-analyze-btn">AI Analyze</button>
+        <button id="resume-save-btn">Save</button>
+      </div>
+      <textarea class="resume-textarea" id="resume-input" placeholder="Paste your resume content here...&#10;&#10;Supports plain text or LaTeX format.&#10;You can also download the LaTeX template on the left, fill in your info, and paste it here."></textarea>
+    </div>
+    <div class="resume-right">
+      <div class="resume-analysis" id="resume-analysis">
+        <div class="resume-empty">
+          <div class="icon">&#128196;</div>
+          <p>Paste your resume on the left, then click "AI Analyze"</p>
+        </div>
+      </div>
+      <div class="resume-chat-box">
+        <div class="resume-chat-messages" id="resume-chat-messages"></div>
+        <div class="chat-input-row">
+          <input type="text" id="resume-chat-input" placeholder="Ask AI for resume improvement..." autocomplete="off">
+          <button id="resume-chat-send">Send</button>
+          <button id="resume-chat-clear" style="background:var(--border);">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== AI Chat ==================== -->
@@ -810,6 +874,100 @@ function mdToHtml(md){
   container.innerHTML=html;
 })();
 
+// ====== Resume ======
+(function(){
+  var input=document.getElementById('resume-input');
+  var analyzeBtn=document.getElementById('resume-analyze-btn');
+  var saveBtn=document.getElementById('resume-save-btn');
+  var analysisDiv=document.getElementById('resume-analysis');
+  var chatMsgs=document.getElementById('resume-chat-messages');
+  var chatInput=document.getElementById('resume-chat-input');
+  var chatSend=document.getElementById('resume-chat-send');
+  var chatClear=document.getElementById('resume-chat-clear');
+  var resumeHistory=[];
+
+  // Load saved resume
+  fetch('/api/resume').then(r=>r.json()).then(function(d){
+    if(d.content) input.value=d.content;
+    if(d.analysis) analysisDiv.innerHTML=mdToHtml(d.analysis);
+    if(d.chat_history&&d.chat_history.length>0){
+      resumeHistory=d.chat_history;
+      resumeHistory.forEach(function(m){appendResumeMsg(m.role,m.content);});
+    }
+  }).catch(function(){});
+
+  function appendResumeMsg(role,text){
+    var div=document.createElement('div');
+    div.className='chat-msg '+role;
+    var bubble=document.createElement('div');
+    bubble.className='chat-bubble';
+    bubble.innerHTML=role==='assistant'?mdToHtml(text):text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    div.appendChild(bubble);
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+  }
+
+  saveBtn.addEventListener('click',function(){
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'save',content:input.value})
+    }).then(r=>r.json()).then(function(){saveBtn.textContent='Saved!';setTimeout(function(){saveBtn.textContent='Save';},1500);});
+  });
+
+  analyzeBtn.addEventListener('click',function(){
+    var content=input.value.trim();
+    if(!content){alert('Please paste your resume first.');return;}
+    analyzeBtn.disabled=true;
+    analyzeBtn.textContent='Analyzing...';
+    analysisDiv.innerHTML='<div class="resume-empty"><div class="chat-typing">AI is analyzing your resume...</div></div>';
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'analyze',content:content})
+    }).then(r=>r.json()).then(function(d){
+      analyzeBtn.disabled=false;
+      analyzeBtn.textContent='AI Analyze';
+      if(d.analysis) analysisDiv.innerHTML=mdToHtml(d.analysis);
+      else analysisDiv.innerHTML='<div class="resume-empty"><p>'+(d.error||'Analysis failed')+'</p></div>';
+    }).catch(function(){
+      analyzeBtn.disabled=false;
+      analyzeBtn.textContent='AI Analyze';
+      analysisDiv.innerHTML='<div class="resume-empty"><p>Network error</p></div>';
+    });
+  });
+
+  function sendResumeChat(){
+    var text=chatInput.value.trim();
+    if(!text) return;
+    chatInput.value='';
+    appendResumeMsg('user',text);
+    chatSend.disabled=true;
+    var typing=document.createElement('div');
+    typing.className='chat-msg assistant';
+    typing.innerHTML='<div class="chat-bubble chat-typing">thinking...</div>';
+    chatMsgs.appendChild(typing);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'chat',message:text,history:resumeHistory})
+    }).then(r=>r.json()).then(function(d){
+      chatMsgs.removeChild(typing);
+      chatSend.disabled=false;
+      if(d.reply){
+        appendResumeMsg('assistant',d.reply);
+        resumeHistory.push({role:'user',content:text});
+        resumeHistory.push({role:'assistant',content:d.reply});
+      } else {
+        appendResumeMsg('assistant',d.error||'Failed');
+      }
+    }).catch(function(){chatMsgs.removeChild(typing);chatSend.disabled=false;appendResumeMsg('assistant','Network error');});
+  }
+  chatSend.addEventListener('click',sendResumeChat);
+  chatInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendResumeChat();}});
+  chatClear.addEventListener('click',function(){
+    if(!confirm('Clear resume chat history?')) return;
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'clear_chat'})
+    }).then(function(){resumeHistory=[];chatMsgs.innerHTML='';});
+  });
+})();
+
 // ====== AI Chat ======
 (function(){
   var messages=document.getElementById('chat-messages');
@@ -982,6 +1140,28 @@ def serve_web(
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif self.path == "/api/resume/template":
+                from .resume import LATEX_TEMPLATE
+                body = LATEX_TEMPLATE.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-tex; charset=utf-8")
+                self.send_header("Content-Disposition", "attachment; filename=resume_template.tex")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/resume":
+                from .resume import load_resume, load_analysis, load_resume_chat
+                result = {
+                    "content": load_resume(),
+                    "analysis": load_analysis().get("text", ""),
+                    "chat_history": load_resume_chat(),
+                }
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             elif self.path == "/api/data":
                 fresh = _reload_data()
                 body = json.dumps(fresh, ensure_ascii=False).encode("utf-8")
@@ -1047,6 +1227,58 @@ def serve_web(
                     result = {"ok": True}
                 else:
                     result = {"error": "unknown action"}
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/resume":
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length)
+                try:
+                    req = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    req = {}
+
+                action = req.get("action", "")
+                from .resume import (
+                    save_resume, load_resume, analyze_resume,
+                    save_analysis, load_analysis,
+                    chat_resume, save_resume_chat, clear_resume_chat,
+                )
+
+                if action == "save":
+                    save_resume(req.get("content", ""))
+                    result = {"ok": True}
+                elif action == "analyze":
+                    content = req.get("content", "")
+                    save_resume(content)
+                    analysis = analyze_resume(content)
+                    if analysis:
+                        save_analysis({"text": analysis})
+                        result = {"analysis": analysis}
+                    else:
+                        result = {"error": "AI not configured or request failed"}
+                elif action == "chat":
+                    msg = req.get("message", "")
+                    history = req.get("history", [])
+                    resume_content = load_resume()
+                    analysis_text = load_analysis().get("text", "")
+                    reply = chat_resume(msg, history, resume_content, analysis_text)
+                    if reply:
+                        history.append({"role": "user", "content": msg})
+                        history.append({"role": "assistant", "content": reply})
+                        save_resume_chat(history)
+                        result = {"reply": reply}
+                    else:
+                        result = {"error": "AI not configured or request failed"}
+                elif action == "clear_chat":
+                    clear_resume_chat()
+                    result = {"ok": True}
+                else:
+                    result = {"error": "unknown action"}
+
                 body = json.dumps(result, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
