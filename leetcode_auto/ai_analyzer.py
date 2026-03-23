@@ -390,7 +390,7 @@ def build_chat_context() -> str:
 
 def chat(user_message: str, history: list,
          system_prompt: str = "") -> Optional[str]:
-    """发送对话消息，返回 AI 回复。
+    """发送对话消息，返回 AI 回复。自动注入共享记忆。
 
     history: [{"role":"user","content":"..."},{"role":"assistant","content":"..."},...]
     """
@@ -398,21 +398,35 @@ def chat(user_message: str, history: list,
     if not ai_config["enabled"]:
         return None
 
+    # 注入共享记忆
+    from .memory import format_memory_for_prompt
+    memory_text = format_memory_for_prompt()
+    full_system = system_prompt + memory_text if memory_text else system_prompt
+
     messages = list(history)
     messages.append({"role": "user", "content": user_message})
 
-    reply = call_ai_messages(messages, ai_config, system=system_prompt)
+    reply = call_ai_messages(messages, ai_config, system=full_system)
+
+    # 异步提取记忆
+    if reply:
+        from .memory import extract_and_save_memory
+        try:
+            extract_and_save_memory(user_message, reply, source="刷题助手")
+        except Exception:
+            pass
+
     return reply
 
 
 # ---------------------------------------------------------------------------
-# 对话记录持久化
+# 对话记录持久化（含压缩）
 # ---------------------------------------------------------------------------
 
 from .config import DATA_DIR as _DATA_DIR
 
 _CHAT_HISTORY_FILE = _DATA_DIR / "chat_history.json"
-_MAX_HISTORY = 50  # 最多保留最近 50 轮对话
+_MAX_HISTORY = 50
 
 
 def load_chat_history() -> list:
@@ -427,8 +441,10 @@ def load_chat_history() -> list:
 
 
 def save_chat_history(history: list):
-    """保存对话记录，只保留最近 N 轮。"""
-    trimmed = history[-_MAX_HISTORY * 2:]  # 每轮 2 条（user + assistant）
+    """保存对话记录，超过阈值时自动压缩。"""
+    from .memory import compress_history
+    compressed = compress_history(history)
+    trimmed = compressed[-_MAX_HISTORY * 2:]
     _CHAT_HISTORY_FILE.write_text(
         json.dumps(trimmed, ensure_ascii=False, indent=2),
         encoding="utf-8",

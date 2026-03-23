@@ -167,7 +167,9 @@ def load_resume_chat() -> list:
 
 
 def save_resume_chat(history: list):
-    trimmed = history[-_MAX_RESUME_HISTORY * 2:]
+    from .memory import compress_history
+    compressed = compress_history(history)
+    trimmed = compressed[-_MAX_RESUME_HISTORY * 2:]
     RESUME_CHAT_FILE.write_text(
         json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -235,10 +237,12 @@ def analyze_resume(content: str) -> Optional[str]:
 
 def chat_resume(user_message: str, history: list,
                 resume_content: str, analysis_text: str = "") -> Optional[str]:
-    """简历优化对话。"""
+    """简历优化对话。自动注入共享记忆。"""
     ai_config = get_ai_config()
     if not ai_config["enabled"]:
         return None
+
+    from .memory import format_memory_for_prompt, extract_and_save_memory
 
     analysis_ctx = ""
     if analysis_text:
@@ -248,10 +252,21 @@ def chat_resume(user_message: str, history: list,
         resume=resume_content[:4000],
         analysis_context=analysis_ctx,
     )
+    memory_text = format_memory_for_prompt()
+    if memory_text:
+        system += memory_text
 
     messages = list(history)
     messages.append({"role": "user", "content": user_message})
-    return call_ai_messages(messages, ai_config, system=system)
+    reply = call_ai_messages(messages, ai_config, system=system)
+
+    if reply:
+        try:
+            extract_and_save_memory(user_message, reply, source="简历优化")
+        except Exception:
+            pass
+
+    return reply
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +356,9 @@ def load_interview_chat() -> list:
 
 
 def save_interview_chat(history: list):
-    trimmed = history[-60:]
+    from .memory import compress_history
+    compressed = compress_history(history)
+    trimmed = compressed[-60:]
     INTERVIEW_CHAT_FILE.write_text(
         json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -353,12 +370,26 @@ def clear_interview_chat():
 
 def chat_interview(user_message: str, history: list,
                    resume_content: str) -> Optional[str]:
-    """模拟面试对话。"""
+    """模拟面试对话。自动注入共享记忆。"""
     ai_config = get_ai_config()
     if not ai_config["enabled"]:
         return None
 
+    from .memory import format_memory_for_prompt, extract_and_save_memory
+
     system = _MOCK_INTERVIEW_SYSTEM.format(resume=resume_content[:4000])
+    memory_text = format_memory_for_prompt()
+    if memory_text:
+        system += memory_text
+
     messages = list(history)
     messages.append({"role": "user", "content": user_message})
-    return call_ai_messages(messages, ai_config, system=system)
+    reply = call_ai_messages(messages, ai_config, system=system)
+
+    if reply:
+        try:
+            extract_and_save_memory(user_message, reply, source="模拟面试")
+        except Exception:
+            pass
+
+    return reply
