@@ -556,9 +556,12 @@ def _parse_round_date(val: str) -> Optional[date]:
 
 
 def update_progress(rows: list[dict], today_slugs: set[str], today_str: str):
-    """更新进度表，轮次列写入日期而非 ✓。返回 (new, review)。"""
+    """更新进度表，轮次列写入日期而非 ✓。返回 (new, review, filled_rounds)。
+    filled_rounds: [{slug, round_key, title}] 记录本次填入了哪些轮次。
+    """
     new_problems: list[str] = []
     review_problems: list[str] = []
+    filled_rounds: list[dict] = []
 
     for row in rows:
         if row["title_slug"] not in today_slugs:
@@ -569,6 +572,11 @@ def update_progress(rows: list[dict], today_slugs: set[str], today_str: str):
             if not _is_round_done(row[rk]):
                 row[rk] = today_str
                 filled = True
+                filled_rounds.append({
+                    "slug": row["title_slug"],
+                    "round": rk,
+                    "title": _display_title(row["title"]),
+                })
                 break
         if not filled:
             continue
@@ -578,7 +586,7 @@ def update_progress(rows: list[dict], today_slugs: set[str], today_str: str):
         name = _display_title(row["title"])
         (new_problems if is_new else review_problems).append(name)
 
-    return new_problems, review_problems
+    return new_problems, review_problems, filled_rounds
 
 
 # ---------------------------------------------------------------------------
@@ -892,7 +900,7 @@ def sync(interactive: bool = True):
         return
 
     print("\n4. 正在更新进度表...")
-    new_problems, review_problems = update_progress(rows, matched_slugs, today_str)
+    new_problems, review_problems, filled_rounds = update_progress(rows, matched_slugs, today_str)
     write_progress_table(PROGRESS_FILE, header_lines, rows)
     print(f"   新题 {len(new_problems)} 道：{', '.join(new_problems) or '无'}")
     print(f"   复习 {len(review_problems)} 道：{', '.join(review_problems) or '无'}")
@@ -934,6 +942,39 @@ def sync(interactive: bool = True):
         print(f"   检测到 {len(optimizations)} 道题有优化空间：{', '.join(opt_titles)}")
     else:
         print("   所有提交性能表现良好，无需优化")
+
+    # 每道题逐轮 AI 分析
+    from .config import get_ai_config
+    ai_cfg = get_ai_config()
+    if ai_cfg["enabled"] and filled_rounds:
+        step = 9 if optimizations else 8
+        print(f"\n{step}. 逐题 AI 分析（{len(filled_rounds)} 道）...")
+        from .ai_analyzer import call_ai
+        from .problem_data import add_ai_review
+        sub_map = {s["titleSlug"]: s for s in today_subs}
+        for fr in filled_rounds:
+            slug = fr["slug"]
+            rk = fr["round"]
+            title = fr["title"]
+            sub = sub_map.get(slug)
+            if not sub:
+                continue
+            try:
+                detail = fetch_submission_detail(creds["session"], creds["csrf"], str(sub["id"]))
+                code = detail.get("code", "")
+                lang = (detail.get("lang") or {}).get("name", "")
+                if not code:
+                    continue
+                prompt = (
+                    f"请简要分析以下 LeetCode 题目 {title}（{rk.upper()}）的代码，"
+                    f"指出可优化的点和改进方向（100字以内）：\n\n```{lang.lower()}\n{code}\n```"
+                )
+                analysis = call_ai(prompt, ai_cfg)
+                if analysis:
+                    add_ai_review(slug, rk, today_str, analysis)
+                    print(f"   [{rk.upper()}] {title} ✓")
+            except Exception:
+                continue
 
     msg = f"新题 {len(new_problems)} 道，复习 {len(review_problems)} 道"
     if hot100_struggles:

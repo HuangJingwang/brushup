@@ -35,6 +35,7 @@ def _build_comprehensive_data(
     est: str,
 ) -> dict:
     """构建前端所需的完整 JSON 数据。"""
+    from .problem_data import get_all_problem_data
     cat_stats = compute_category_stats(rows)
     categories = []
     for cat_name, cs in sorted(cat_stats.items(), key=lambda x: x[0]):
@@ -120,6 +121,7 @@ def _build_comprehensive_data(
         ],
         "new_todo": new_todo,
         "plan_config": load_plan_config(),
+        "problem_data": get_all_problem_data(),
         "optimizations": optimizations,
     }
 
@@ -376,6 +378,40 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .chat-input-row button:disabled { opacity:0.5; cursor:not-allowed; }
 .chat-typing { color:var(--dim); font-style:italic; font-size:13px; }
 
+/* Light Theme */
+body.light { --bg:#f6f8fa; --bg2:#ffffff; --card:#ffffff; --border:#d0d7de; --text:#1f2328; --dim:#656d76; }
+body.light .sidebar { border-right-color:#d0d7de; }
+body.light .progress-table th { background:#f6f8fa; }
+
+/* Theme toggle */
+.theme-toggle { display:flex; gap:4px; margin-top:4px; }
+.theme-btn { background:none; border:1px solid var(--border); color:var(--dim); padding:3px 10px; border-radius:4px; font-size:11px; cursor:pointer; }
+.theme-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(88,166,255,0.08); }
+
+/* Achievements */
+.achievements-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+.achievement-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+.achievement-card.unlocked { border-color:var(--accent); }
+.achievement-icon { font-size:32px; margin-bottom:8px; }
+.achievement-name { font-size:13px; font-weight:600; }
+.achievement-desc { font-size:11px; color:var(--dim); margin-top:4px; }
+.achievement-card.locked { opacity:0.4; }
+
+/* Notes modal */
+.note-row { display:none; }
+.note-row.show { display:table-row; }
+.note-row td { padding:8px 8px 8px 40px !important; background:var(--bg2); }
+.note-textarea { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; border-radius:6px; font-size:12px; min-height:60px; resize:vertical; outline:none; }
+.note-textarea:focus { border-color:var(--accent); }
+.note-actions { display:flex; gap:8px; margin-top:6px; align-items:center; }
+.note-save-btn { background:var(--accent); color:#fff; border:none; padding:4px 12px; border-radius:4px; font-size:12px; cursor:pointer; }
+.note-ai-reviews { margin-top:8px; font-size:12px; color:var(--dim); }
+.note-ai-reviews summary { cursor:pointer; color:var(--accent); }
+
+/* Focus mode */
+.focus-bar { display:flex; gap:12px; align-items:center; margin-bottom:16px; }
+.focus-bar select { background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:6px 10px; border-radius:6px; font-size:13px; }
+
 /* Responsive */
 @media (max-width:768px) {
   .sidebar { position:fixed; bottom:0; top:auto; left:0; right:0; width:100%; height:auto; flex-direction:row; border-right:none; border-top:1px solid var(--border); padding:0; z-index:100; overflow-x:auto; }
@@ -436,6 +472,10 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
       <button class="lang-btn" id="lang-en" onclick="switchLang('en')">EN</button>
       <button class="lang-btn" id="lang-zh" onclick="switchLang('zh')">中文</button>
     </div>
+    <div class="theme-toggle">
+      <button class="theme-btn" id="theme-dark" onclick="switchTheme('dark')" data-i18n="theme_dark">深色</button>
+      <button class="theme-btn" id="theme-light" onclick="switchTheme('light')" data-i18n="theme_light">浅色</button>
+    </div>
   </div>
 </nav>
 
@@ -468,6 +508,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
     <div class="card"><h2 data-i18n="card_radar">分类能力</h2><div id="radar" class="chart"></div></div>
     <div class="card"><h2 data-i18n="card_trend">每日趋势</h2><div id="trend" class="chart"></div></div>
     <div class="card card-full"><h2 data-i18n="card_heatmap">刷题热力图（近 365 天）</h2><div id="heatmap" class="chart-lg"></div></div>
+    <div class="card card-full"><h2>Review Calendar (14 days)</h2><div id="review-calendar" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
   </div>
 </div>
 
@@ -490,6 +531,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
       <option value="completed" data-i18n="status_done">已完成</option>
     </select>
     <button id="clear-filters" class="clear-btn" style="display:none;" data-i18n="clear_filter">清除筛选</button>
+    <button id="export-csv-btn" class="clear-btn" data-i18n="export_csv">导出 CSV</button>
   </div>
   <div class="table-wrapper">
     <table class="progress-table">
@@ -683,6 +725,14 @@ var I18N={
     settings_deadline:'截止日期',settings_deadline_hint:'留空 = 不限制',
     settings_save:'保存设置',settings_saved:'已保存！需重启 Web 服务生效',
     settings_daily_pace:'每日建议进度',settings_remaining:'剩余',settings_days_left:'剩余天数',
+    theme_dark:'深色',theme_light:'浅色',
+    nav_achievements:'成就',
+    export_csv:'导出 CSV',
+    focus_mode:'专项突破',focus_select:'选择薄弱分类',
+    notes_ph:'添加笔记...',notes_save:'保存笔记',
+    achievement_streak7:'连续打卡 7 天',achievement_streak30:'连续打卡 30 天',
+    achievement_r1_all:'R1 全部完成',achievement_r1_half:'R1 完成一半',
+    shortcut_hint:'快捷键：1-9 切换标签页',
   },
   en:{
     nav_dashboard:'Dashboard',nav_chat:'AI Chat',nav_progress:'Progress',nav_review:'Review',
@@ -721,6 +771,14 @@ var I18N={
     settings_deadline:'Deadline',settings_deadline_hint:'Empty = no limit',
     settings_save:'Save Settings',settings_saved:'Saved! Restart web server to apply',
     settings_daily_pace:'Suggested Daily Pace',settings_remaining:'Remaining',settings_days_left:'Days Left',
+    theme_dark:'Dark',theme_light:'Light',
+    nav_achievements:'Achievements',
+    export_csv:'Export CSV',
+    focus_mode:'Focus Mode',focus_select:'Select weak category',
+    notes_ph:'Add notes...',notes_save:'Save Note',
+    achievement_streak7:'7-day streak',achievement_streak30:'30-day streak',
+    achievement_r1_all:'R1 all done',achievement_r1_half:'R1 half done',
+    shortcut_hint:'Shortcuts: 1-9 to switch tabs',
   }
 };
 var currentLang=localStorage.getItem('brushup_lang')||'en';
@@ -744,6 +802,16 @@ function switchLang(lang){
   localStorage.setItem('brushup_lang',lang);
   applyLang();
 }
+
+var currentTheme=localStorage.getItem('brushup_theme')||'dark';
+function switchTheme(theme){
+  currentTheme=theme;
+  localStorage.setItem('brushup_theme',theme);
+  document.body.className=theme==='light'?'light':'';
+  document.getElementById('theme-dark').className='theme-btn'+(theme==='dark'?' active':'');
+  document.getElementById('theme-light').className='theme-btn'+(theme==='light'?' active':'');
+}
+switchTheme(currentTheme);
 
 const D = __DATA_JSON__;
 
@@ -928,60 +996,11 @@ var allCategories=[...new Set(D.rows.map(r=>r.category))].sort();
 var catSelect=document.getElementById('filter-category');
 allCategories.forEach(c=>{var o=document.createElement('option');o.value=c;o.textContent=c;catSelect.appendChild(o);});
 
-function renderTable(){
-  var search=document.getElementById('search-input').value.toLowerCase();
-  var diffF=document.getElementById('filter-difficulty').value;
-  var catF=document.getElementById('filter-category').value;
-  var statusF=document.getElementById('filter-status').value;
-  var hasFilter=search||diffF||catF||statusF;
-  document.getElementById('clear-filters').style.display=hasFilter?'inline-block':'none';
-
-  var filtered=D.rows.filter(function(r){
-    if(search && r.title.toLowerCase().indexOf(search)===-1 && r.num.toString().indexOf(search)===-1) return false;
-    if(diffF){
-      var d=r.difficulty;
-      if(diffF==='easy'&&d!=='easy'&&d!=='Easy'&&d!=='简单') return false;
-      if(diffF==='medium'&&d!=='medium'&&d!=='Medium'&&d!=='中等') return false;
-      if(diffF==='hard'&&d!=='hard'&&d!=='Hard'&&d!=='困难') return false;
-    }
-    if(catF && r.category!==catF) return false;
-    if(statusF){
-      var hasR1=r.r1&&r.r1!=='—'&&r.r1.trim()!=='';
-      var allDone=hasR1&&r.r2&&r.r2!=='—'&&r.r2.trim()!==''&&r.r3&&r.r3!=='—'&&r.r3.trim()!==''&&r.r4&&r.r4!=='—'&&r.r4.trim()!==''&&r.r5&&r.r5!=='—'&&r.r5.trim()!=='';
-      if(statusF==='not-started'&&hasR1) return false;
-      if(statusF==='in-progress'&&(!hasR1||allDone)) return false;
-      if(statusF==='completed'&&!allDone) return false;
-    }
-    return true;
-  });
-
-  document.getElementById('table-count').textContent='('+filtered.length+'/'+D.rows.length+')';
-
-  var html='';
-  filtered.forEach(function(r){
-    var diffClass=r.difficulty==='简单'?'diff-easy':r.difficulty==='困难'?'diff-hard':'diff-medium';
-    function rc(v){
-      if(v&&v!=='—'&&v.trim()!=='') return '<td class="round-cell"><span class="round-done">'+v+'</span></td>';
-      return '<td class="round-cell"><span class="round-empty">-</span></td>';
-    }
-    var statusClass=r.status==='已完成'?'status-done':'status-progress';
-    var statusText=r.status||'-';
-    html+='<tr>'
-      +'<td>'+r.num+'</td>'
-      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank">'+r.title+'</a></td>'
-      +'<td class="'+diffClass+'">'+r.difficulty+'</td>'
-      +'<td><span class="cat-tag">'+r.category+'</span></td>'
-      +rc(r.r1)+rc(r.r2)+rc(r.r3)+rc(r.r4)+rc(r.r5)
-      +'<td class="'+statusClass+'">'+statusText+'</td>'
-      +'</tr>';
-  });
-  document.getElementById('progress-body').innerHTML=html;
-}
-
-document.getElementById('search-input').addEventListener('input',renderTable);
-document.getElementById('filter-difficulty').addEventListener('change',renderTable);
-document.getElementById('filter-category').addEventListener('change',renderTable);
-document.getElementById('filter-status').addEventListener('change',renderTable);
+// renderTable defined later with notes support
+document.getElementById('search-input').addEventListener('input',function(){renderTable()});
+document.getElementById('filter-difficulty').addEventListener('change',function(){renderTable()});
+document.getElementById('filter-category').addEventListener('change',function(){renderTable()});
+document.getElementById('filter-status').addEventListener('change',function(){renderTable()});
 document.getElementById('clear-filters').addEventListener('click',function(){
   document.getElementById('search-input').value='';
   document.getElementById('filter-difficulty').value='';
@@ -989,7 +1008,6 @@ document.getElementById('clear-filters').addEventListener('click',function(){
   document.getElementById('filter-status').value='';
   renderTable();
 });
-renderTable();
 
 // ====== Checkin Timeline ======
 (function(){
@@ -1470,6 +1488,179 @@ function mdToHtml(md){
   }, 30000);
 })();
 
+// ====== Review Calendar ======
+(function(){
+  var cal=document.getElementById('review-calendar');
+  if(!cal||!D.review_due) return;
+  // Group by due_date
+  var byDate={};
+  D.review_due.forEach(function(r){
+    var dd=r.due_date||'';
+    if(!dd) return;
+    if(!byDate[dd]) byDate[dd]=[];
+    byDate[dd].push(r);
+  });
+  // Show next 14 days
+  var today=new Date();
+  var html='';
+  for(var i=0;i<14;i++){
+    var d=new Date(today);d.setDate(d.getDate()+i);
+    var ds=d.toISOString().slice(0,10);
+    var count=0;
+    // Count reviews due on or before this date that aren't done
+    D.review_due.forEach(function(r){
+      var dueD=r.due_date||ds;
+      if(dueD<=ds) count++;
+    });
+    // Only count for day 0 (today = all overdue + today), future days = scheduled that day
+    if(i>0){ count=(byDate[ds]||[]).length; }
+    var bg=count===0?'var(--border)':count<=2?'var(--green)':count<=5?'var(--yellow)':'var(--red)';
+    var label=ds.slice(5);
+    var dayName=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+    html+='<div style="text-align:center;min-width:60px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;">'
+      +'<div style="font-size:10px;color:var(--dim)">'+dayName+'</div>'
+      +'<div style="font-size:11px;margin:2px 0">'+label+'</div>'
+      +'<div style="font-size:18px;font-weight:bold;color:'+bg+'">'+count+'</div>'
+      +'</div>';
+  }
+  cal.innerHTML=html;
+})();
+
+// ====== CSV Export ======
+document.getElementById('export-csv-btn').addEventListener('click',function(){
+  var header='#,Title,Slug,Difficulty,Category,'+D.rows[0]? Object.keys(D.rows[0]).filter(function(k){return k.match(/^r\d+$/)}).map(function(k){return k.toUpperCase()}).join(','):'R1,R2,R3,R4,R5';
+  header='#,Title,Slug,Difficulty,Category,Status';
+  // Build proper header with round keys
+  var rKeys=[];
+  if(D.rows.length>0){
+    Object.keys(D.rows[0]).forEach(function(k){if(k.match(/^r\d+$/))rKeys.push(k)});
+    rKeys.sort();
+  }
+  var csv='#,Title,Slug,Difficulty,Category,'+rKeys.map(function(k){return k.toUpperCase()}).join(',')+',Status\n';
+  D.rows.forEach(function(r){
+    var rounds=rKeys.map(function(k){return '"'+(r[k]||'')+'"'}).join(',');
+    csv+=r.num+',"'+r.title+'",'+r.slug+','+r.difficulty+','+r.category+','+rounds+','+(r.status||'')+'\n';
+  });
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='brushup_progress_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+});
+
+// ====== Notes in Progress Table ======
+// Notes are shown when clicking a row - the renderTable function needs to include note rows
+var _origRenderTable=renderTable;
+renderTable=function(){
+  _origRenderTable();
+  // Add click handlers to toggle note rows
+  var tbody=document.getElementById('progress-body');
+  var trs=tbody.querySelectorAll('tr');
+  trs.forEach(function(tr,idx){
+    if(tr.className==='note-row') return;
+    tr.style.cursor='pointer';
+    tr.addEventListener('click',function(){
+      var noteRow=tr.nextElementSibling;
+      if(noteRow&&noteRow.className.indexOf('note-row')>=0){
+        noteRow.classList.toggle('show');
+      }
+    });
+  });
+};
+// Override renderTable to include note rows
+var _origRenderTable2=renderTable;
+renderTable=function(){
+  var search=document.getElementById('search-input').value.toLowerCase();
+  var diffF=document.getElementById('filter-difficulty').value;
+  var catF=document.getElementById('filter-category').value;
+  var statusF=document.getElementById('filter-status').value;
+  var hasFilter=search||diffF||catF||statusF;
+  document.getElementById('clear-filters').style.display=hasFilter?'inline-block':'none';
+
+  var filtered=D.rows.filter(function(r){
+    if(search && r.title.toLowerCase().indexOf(search)===-1 && r.num.toString().indexOf(search)===-1) return false;
+    if(diffF){
+      var d=r.difficulty;
+      if(diffF==='easy'&&d!=='简单') return false;
+      if(diffF==='medium'&&d!=='中等') return false;
+      if(diffF==='hard'&&d!=='困难') return false;
+    }
+    if(catF && r.category!==catF) return false;
+    if(statusF){
+      var hasR1=r.r1&&r.r1!=='—'&&r.r1.trim()!=='';
+      var rKeys2=[];Object.keys(r).forEach(function(k){if(k.match(/^r\d+$/))rKeys2.push(k)});
+      var allDone=rKeys2.every(function(k){return r[k]&&r[k]!=='—'&&r[k].trim()!==''});
+      if(statusF==='not-started'&&hasR1) return false;
+      if(statusF==='in-progress'&&(!hasR1||allDone)) return false;
+      if(statusF==='completed'&&!allDone) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('table-count').textContent='('+filtered.length+'/'+D.rows.length+')';
+  var pd=D.problem_data||{};
+  var html='';
+  var rKeys3=[];
+  if(D.rows.length>0){Object.keys(D.rows[0]).forEach(function(k){if(k.match(/^r\d+$/))rKeys3.push(k)});rKeys3.sort();}
+  filtered.forEach(function(r,idx){
+    var diffClass=r.difficulty==='简单'?'diff-easy':r.difficulty==='困难'?'diff-hard':'diff-medium';
+    function rc(v){
+      if(v&&v!=='—'&&v.trim()!=='') return '<td class="round-cell"><span class="round-done">'+v+'</span></td>';
+      return '<td class="round-cell"><span class="round-empty">-</span></td>';
+    }
+    var statusClass=r.status==='已完成'?'status-done':'status-progress';
+    var statusText=r.status||'-';
+    var roundCells=rKeys3.map(function(k){return rc(r[k])}).join('');
+    html+='<tr style="cursor:pointer" data-slug="'+r.slug+'">'
+      +'<td>'+r.num+'</td>'
+      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank" onclick="event.stopPropagation()">'+r.title+'</a></td>'
+      +'<td class="'+diffClass+'">'+r.difficulty+'</td>'
+      +'<td><span class="cat-tag">'+r.category+'</span></td>'
+      +roundCells
+      +'<td class="'+statusClass+'">'+statusText+'</td>'
+      +'</tr>';
+    // Note row
+    var pdata=pd[r.slug]||{};
+    var note=pdata.notes||'';
+    var reviews=pdata.ai_reviews||[];
+    var reviewHtml='';
+    if(reviews.length>0){
+      reviewHtml='<details class="note-ai-reviews"><summary>AI 分析历史 ('+reviews.length+')</summary>';
+      reviews.forEach(function(rv){reviewHtml+='<div style="margin:6px 0;padding:6px;background:var(--bg);border-radius:4px"><strong>'+rv.round+' ('+rv.date+')</strong><br>'+rv.analysis+'</div>';});
+      reviewHtml+='</details>';
+    }
+    html+='<tr class="note-row"><td colspan="'+(4+rKeys3.length+1)+'">'
+      +'<textarea class="note-textarea" data-slug="'+r.slug+'" placeholder="'+t('notes_ph')+'">'+note.replace(/</g,'&lt;')+'</textarea>'
+      +'<div class="note-actions"><button class="note-save-btn" onclick="saveNote(this)" data-i18n="notes_save">'+t('notes_save')+'</button></div>'
+      +reviewHtml
+      +'</td></tr>';
+  });
+  document.getElementById('progress-body').innerHTML=html;
+  // Click to toggle notes
+  document.querySelectorAll('#progress-body tr[data-slug]').forEach(function(tr){
+    tr.addEventListener('click',function(){
+      var noteRow=tr.nextElementSibling;
+      if(noteRow) noteRow.classList.toggle('show');
+    });
+  });
+};
+function saveNote(btn){
+  var textarea=btn.parentElement.previousElementSibling;
+  var slug=textarea.getAttribute('data-slug');
+  fetch('/api/problem',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'save_note',slug:slug,note:textarea.value})
+  }).then(function(){btn.textContent='✓';setTimeout(function(){btn.textContent=t('notes_save')},1000)});
+}
+renderTable();
+
+// ====== Keyboard Shortcuts ======
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+  var tabs=['dashboard','chat','progress','review','checkin','optimize','resume','interview','settings'];
+  var num=parseInt(e.key);
+  if(num>=1&&num<=tabs.length){ switchTab(tabs[num-1]); }
+});
+
 // ====== Apply Language + Restore Tab ======
 applyLang();
 if(location.hash){var ht=location.hash.slice(1);if(document.getElementById('tab-'+ht)) switchTab(ht);}
@@ -1649,6 +1840,29 @@ def serve_web(
                     result = {"ok": True}
                 else:
                     result = {"error": "unknown action"}
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/problem":
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length)
+                try:
+                    req = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    req = {}
+                action = req.get("action", "")
+                from .problem_data import save_note, add_time_spent
+                if action == "save_note":
+                    save_note(req.get("slug", ""), req.get("note", ""))
+                    result = {"ok": True}
+                elif action == "add_time":
+                    add_time_spent(req.get("slug", ""), req.get("seconds", 0))
+                    result = {"ok": True}
+                else:
+                    result = {"error": "unknown"}
                 body = json.dumps(result, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
