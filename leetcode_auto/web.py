@@ -181,6 +181,8 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .table-controls input:focus, .table-controls select:focus { border-color:var(--accent); }
 .table-controls input { flex:1; min-width:200px; }
 .table-controls select { min-width:120px; }
+.clear-btn { background:var(--border); color:var(--text); border:none; padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer; white-space:nowrap; }
+.clear-btn:hover { background:var(--red); color:#fff; }
 .progress-table { width:100%; border-collapse:collapse; font-size:13px; }
 .progress-table th { text-align:left; padding:10px 8px; color:var(--dim); border-bottom:2px solid var(--border); position:sticky; top:0; background:var(--bg); font-weight:600; }
 .progress-table td { padding:8px; border-bottom:1px solid var(--border); }
@@ -388,6 +390,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
       <option value="in-progress">In Progress</option>
       <option value="completed">Completed</option>
     </select>
+    <button id="clear-filters" class="clear-btn" style="display:none;">Clear</button>
   </div>
   <div class="table-wrapper">
     <table class="progress-table">
@@ -627,6 +630,8 @@ function renderTable(){
   var diffF=document.getElementById('filter-difficulty').value;
   var catF=document.getElementById('filter-category').value;
   var statusF=document.getElementById('filter-status').value;
+  var hasFilter=search||diffF||catF||statusF;
+  document.getElementById('clear-filters').style.display=hasFilter?'inline-block':'none';
 
   var filtered=D.rows.filter(function(r){
     if(search && r.title.toLowerCase().indexOf(search)===-1 && r.num.toString().indexOf(search)===-1) return false;
@@ -674,6 +679,13 @@ document.getElementById('search-input').addEventListener('input',renderTable);
 document.getElementById('filter-difficulty').addEventListener('change',renderTable);
 document.getElementById('filter-category').addEventListener('change',renderTable);
 document.getElementById('filter-status').addEventListener('change',renderTable);
+document.getElementById('clear-filters').addEventListener('click',function(){
+  document.getElementById('search-input').value='';
+  document.getElementById('filter-difficulty').value='';
+  document.getElementById('filter-category').value='';
+  document.getElementById('filter-status').value='';
+  renderTable();
+});
 renderTable();
 
 // ====== Checkin Timeline ======
