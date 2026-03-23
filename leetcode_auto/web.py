@@ -70,6 +70,21 @@ def _build_comprehensive_data(
             "status": row.get("status", ""),
         })
 
+    # R1 未做的新题
+    new_todo = []
+    for row in rows:
+        if row["r1"] and row["r1"] not in ("", "—"):
+            continue
+        title_match = re.search(r"\[(.+?)\]", row["title"])
+        display_title = title_match.group(1) if title_match else row["title"]
+        cat = SLUG_CATEGORY.get(row.get("title_slug", ""), "其他")
+        new_todo.append({
+            "title": display_title,
+            "slug": row.get("title_slug", ""),
+            "difficulty": row["difficulty"],
+            "category": cat,
+        })
+
     # 构建打卡记录
     checkins = []
     for e in reversed(checkin_data):
@@ -99,6 +114,7 @@ def _build_comprehensive_data(
             {k: (v.isoformat() if isinstance(v, date) else v) for k, v in r.items()}
             for r in review_due
         ],
+        "new_todo": new_todo,
         "optimizations": optimizations,
     }
 
@@ -223,6 +239,24 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .empty-state .icon { font-size:48px; margin-bottom:16px; }
 .empty-state p { font-size:14px; }
 
+/* Today Plan */
+.today-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.today-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+.today-card h2 { font-size:14px; color:var(--dim); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.today-card h2 .count { font-size:12px; padding:2px 8px; border-radius:10px; }
+.count-accent { background:rgba(88,166,255,0.15); color:var(--accent); }
+.count-red { background:rgba(248,81,73,0.15); color:var(--red); }
+.today-list { list-style:none; max-height:320px; overflow-y:auto; }
+.today-list li { padding:8px 0; border-bottom:1px solid rgba(48,54,61,0.5); display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+.today-list li:last-child { border:none; }
+.today-list a { color:var(--accent); text-decoration:none; }
+.today-list a:hover { text-decoration:underline; }
+.today-meta { display:flex; gap:8px; align-items:center; }
+.today-meta .tag { font-size:11px; padding:1px 6px; border-radius:3px; }
+.tag-review { background:rgba(248,81,73,0.12); color:var(--red); }
+.tag-new { background:rgba(88,166,255,0.12); color:var(--accent); }
+.tag-cat { background:rgba(139,148,158,0.12); color:var(--dim); }
+
 /* Responsive */
 @media (max-width:768px) {
   .sidebar { display:none; }
@@ -269,6 +303,16 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
     <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label">streak (days)</div></div>
     <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label">total days</div></div>
     <div class="stat-card"><div class="label" style="font-size:13px;margin-top:8px;">__EST__</div><div class="label">estimated</div></div>
+  </div>
+  <div class="today-grid">
+    <div class="today-card">
+      <h2>Today: New <span class="count count-accent" id="new-count"></span></h2>
+      <ul class="today-list" id="today-new"></ul>
+    </div>
+    <div class="today-card">
+      <h2>Today: Review <span class="count count-red" id="review-count-dash"></span></h2>
+      <ul class="today-list" id="today-review"></ul>
+    </div>
   </div>
   <div class="grid">
     <div class="card"><h2>Rate</h2><div id="gauge" class="chart"></div></div>
@@ -471,6 +515,44 @@ window.addEventListener('resize',function(){
     if(el){var c=echarts.getInstanceByDom(el);if(c)c.resize();}
   });
 });
+
+// ====== Today's Plan ======
+(function(){
+  // New todos (R1 not done)
+  var newList=document.getElementById('today-new');
+  var newCount=document.getElementById('new-count');
+  var todos=D.new_todo||[];
+  var showNew=todos.slice(0,10);
+  newCount.textContent=todos.length;
+  if(showNew.length===0){
+    newList.innerHTML='<li style="color:var(--dim)">R1 done!</li>';
+  } else {
+    var h='';
+    showNew.forEach(function(t){
+      var dc=t.difficulty==='简单'?'diff-easy':t.difficulty==='困难'?'diff-hard':'diff-medium';
+      h+='<li><a href="https://leetcode.cn/problems/'+t.slug+'/" target="_blank">'+t.title+'</a>'
+        +'<div class="today-meta"><span class="tag tag-cat">'+t.category+'</span><span class="tag '+dc+'">'+t.difficulty+'</span></div></li>';
+    });
+    if(todos.length>10) h+='<li style="color:var(--dim)">... '+todos.length+' problems remaining</li>';
+    newList.innerHTML=h;
+  }
+
+  // Review due
+  var revList=document.getElementById('today-review');
+  var revCount=document.getElementById('review-count-dash');
+  var reviews=D.review_due||[];
+  revCount.textContent=reviews.length;
+  if(reviews.length===0){
+    revList.innerHTML='<li style="color:var(--green)">No reviews due today!</li>';
+  } else {
+    var h='';
+    reviews.forEach(function(r){
+      var status=r.overdue>0?'<span class="tag tag-review">overdue '+r.overdue+'d</span>':'<span class="tag tag-new">due today</span>';
+      h+='<li><span>'+r.title+'</span><div class="today-meta"><span class="tag tag-cat">'+r.round+'</span>'+status+'</div></li>';
+    });
+    revList.innerHTML=h;
+  }
+})();
 
 // ====== Progress Table ======
 var diffMap={'easy':'Easy','medium':'Medium','hard':'Hard'};
