@@ -1,6 +1,6 @@
 <div align="center">
 
-# OfferPilot
+# BrushUp
 
 **刷题、复习、简历，一个工具搞定。**
 
@@ -30,7 +30,7 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/HuangJingwang/offerpilot.git
+git clone https://github.com/HuangJingwang/brushup.git
 cd leetcode_auto && pip install -e .
 
 leetcode           # 首次运行：登录 + 同步
@@ -134,4 +134,4 @@ leetcode --remind-daemon   每日通知（start / status / stop）
 
 ## License
 
-[MIT](LICENSE) &copy; 2025 OfferPilot
+[MIT](LICENSE) &copy; 2025 BrushUp
