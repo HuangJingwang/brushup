@@ -1257,6 +1257,19 @@ function mdToHtml(md){
       chatMsgs.removeChild(typing);
       chatSend.disabled=false;
       if(d.reply){
+        // Check if AI returned a full resume update
+        var resumeMatch=d.reply.match(/```resume\n([\s\S]*?)```/);
+        if(resumeMatch){
+          var newResume=resumeMatch[1].trim();
+          input.value=newResume;
+          // Auto-save
+          fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'save',content:newResume})});
+          // Update preview if in preview mode
+          if(resumeLayout.classList.contains('preview-mode')){
+            previewContent.innerHTML=typeof marked!=='undefined'?marked.parse(newResume):newResume;
+          }
+        }
         appendResumeMsg('assistant',d.reply);
         resumeHistory.push({role:'user',content:text});
         resumeHistory.push({role:'assistant',content:d.reply});
