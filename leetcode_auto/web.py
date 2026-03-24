@@ -253,7 +253,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .card h2 { font-size:13px; color:var(--dim); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
 .card-full { grid-column:1/-1; }
 .chart { width:100%; height:320px; }
-.chart-lg { width:100%; height:360px; }
+.chart-lg { width:100%; height:220px; }
 
 /* Progress Table */
 .table-controls { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
@@ -1046,24 +1046,48 @@ if(D.daily.length>0){
   document.getElementById('trend').innerHTML='<div class="empty-state"><p>'+t('empty')+'</p></div>';
 }
 
-// Heatmap
+// Heatmap — GitHub style
 (function(){
-  var chart=echarts.init(document.getElementById('heatmap'));
+  var el=document.getElementById('heatmap');
+  var chart=echarts.init(el);
   var today=new Date();
   var start=new Date(today);start.setDate(start.getDate()-365);
+  var isLight=document.body.classList.contains('light');
+  var bgColor=isLight?'#ebedf0':'#161b22';
+  var colors=isLight?['#ebedf0','#9be9a8','#40c463','#30a14e','#216e39']:['#161b22','#0e4429','#006d32','#26a641','#39d353'];
   chart.setOption({
-    tooltip:{formatter:function(p){return p.value[0]+': '+p.value[1]+' 题';}},
-    visualMap:{min:0,max:8,show:false,inRange:{color:['#161b22','#0e4429','#006d32','#26a641','#39d353']}},
+    tooltip:{
+      formatter:function(p){
+        if(!p.value) return '';
+        var d=p.value[0],n=p.value[1]||0;
+        return '<div style="font-size:12px;padding:2px 4px"><strong>'+d+'</strong><br/>'+n+' problem'+(n!==1?'s':'')+'</div>';
+      },
+      backgroundColor:isLight?'#fff':'#1c2129',
+      borderColor:isLight?'#d0d7de':'#30363d',
+      textStyle:{color:isLight?'#1f2328':'#e6edf3'},
+    },
+    visualMap:{
+      min:0,max:6,show:true,orient:'horizontal',
+      right:20,bottom:10,
+      itemWidth:12,itemHeight:12,
+      text:['More','Less'],
+      textStyle:{color:'#8b949e',fontSize:10},
+      inRange:{color:colors},
+    },
     calendar:{
       range:[start.toISOString().slice(0,10),today.toISOString().slice(0,10)],
-      cellSize:[16,16],
-      itemStyle:{borderWidth:3,borderColor:'#0d1117'},
+      cellSize:[14,14],
+      itemStyle:{borderWidth:4,borderColor:isLight?'#fff':'#0d1117',borderRadius:3},
       splitLine:{show:false},
-      dayLabel:{color:'#8b949e',nameMap:'en',fontSize:10},
-      monthLabel:{color:'#8b949e',fontSize:11},
+      dayLabel:{color:'#8b949e',nameMap:['','Mon','','Wed','','Fri',''],fontSize:10,margin:8},
+      monthLabel:{color:'#8b949e',fontSize:11,margin:12},
       yearLabel:{show:false},
+      top:30,left:50,right:40,
     },
-    series:[{type:'heatmap',coordinateSystem:'calendar',data:D.heatmap_data}]
+    series:[{
+      type:'heatmap',coordinateSystem:'calendar',data:D.heatmap_data,
+      itemStyle:{borderRadius:2},
+    }]
   });
 })();
 
