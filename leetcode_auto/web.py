@@ -139,6 +139,7 @@ def _build_comprehensive_data(
         ],
         "new_todo": new_todo,
         "plan_config": load_plan_config(),
+        "available_lists": {k: {"name": v["name"], "name_en": v["name_en"], "count": len(v["problems"])} for k, v in __import__('leetcode_auto.problem_lists', fromlist=['PROBLEM_LISTS']).PROBLEM_LISTS.items()},
         "problem_data": get_all_problem_data(),
         "optimizations": optimizations,
     }
@@ -616,6 +617,11 @@ body.light .progress-table th { background:#f6f8fa; }
 <!-- ==================== 简历优化 ==================== -->
 <div class="tab-content" id="tab-resume">
   <div class="page-title"><span class="icon">&#128196;</span> <span data-i18n="nav_resume">简历优化</span></div>
+  <div class="resume-actions" style="margin-bottom:12px">
+    <select id="resume-selector" style="min-width:160px"></select>
+    <button id="resume-new-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;">+ 新建</button>
+    <button id="resume-del-btn" style="background:var(--card);border:1px solid var(--border);color:var(--red);padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;">删除</button>
+  </div>
   <div class="resume-layout">
     <div class="resume-left">
       <div class="resume-actions">
@@ -683,6 +689,10 @@ body.light .progress-table th { background:#f6f8fa; }
 <div class="tab-content" id="tab-settings">
   <div class="page-title"><span class="icon">&#9881;</span> <span data-i18n="nav_settings">设置</span></div>
   <div class="settings-form">
+    <div class="settings-group">
+      <label data-i18n="settings_list">题单</label>
+      <select id="set-problem-list"></select>
+    </div>
     <div class="settings-row">
       <div class="settings-group">
         <label data-i18n="settings_rounds">复习轮数</label>
@@ -765,7 +775,7 @@ var I18N={
     chat_cleared:'对话已清空，有什么想问的？',thinking:'思考中...',net_error:'网络错误',
     analysis_fail:'分析失败',paste_first:'请先粘贴简历内容',
     data_updated:'数据更新：__TODAY__',
-    nav_settings:'设置',
+    nav_settings:'设置',settings_list:'题单',settings_list_warn:'切换题单将创建新的进度表，已有数据不受影响',
     settings_rounds:'复习轮数',settings_intervals:'复习间隔（天）',
     settings_daily_new:'每日新题建议',settings_daily_review:'每日复习建议',
     settings_deadline:'截止日期',settings_deadline_hint:'留空 = 不限制',
@@ -811,7 +821,7 @@ var I18N={
     chat_cleared:'Chat cleared. What would you like to ask?',thinking:'Thinking...',net_error:'Network error',
     analysis_fail:'Analysis failed',paste_first:'Please paste your resume first',
     data_updated:'Data: __TODAY__',
-    nav_settings:'Settings',
+    nav_settings:'Settings',settings_list:'Problem List',settings_list_warn:'Switching list creates a new progress table. Existing data is preserved.',
     settings_rounds:'Review Rounds',settings_intervals:'Review Intervals (days)',
     settings_daily_new:'Daily New Suggestion',settings_daily_review:'Daily Review Suggestion',
     settings_deadline:'Deadline',settings_deadline_hint:'Empty = no limit',
@@ -1171,12 +1181,49 @@ function mdToHtml(md){
   var analysisDiv=document.getElementById('resume-analysis');
   var chatMsgs=document.getElementById('resume-chat-messages');
   var chatInput=document.getElementById('resume-chat-input');
+  var resumeSelector=document.getElementById('resume-selector');
+  var resumeNewBtn=document.getElementById('resume-new-btn');
+  var resumeDelBtn=document.getElementById('resume-del-btn');
+
+  function populateResumeSelector(rl){
+    resumeSelector.innerHTML='';
+    (rl.list||[]).forEach(function(r){
+      var o=document.createElement('option');
+      o.value=r.id;o.textContent=r.name;
+      resumeSelector.appendChild(o);
+    });
+    resumeSelector.value=rl.current||'default';
+  }
+
+  resumeSelector.addEventListener('change',function(){
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'switch_resume',resume_id:resumeSelector.value})
+    }).then(function(){location.hash='resume';location.reload();});
+  });
+
+  resumeNewBtn.addEventListener('click',function(){
+    var name=prompt('简历名称：');
+    if(!name) return;
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'create_resume',name:name})
+    }).then(function(){location.hash='resume';location.reload();});
+  });
+
+  resumeDelBtn.addEventListener('click',function(){
+    var id=resumeSelector.value;
+    if(id==='default'){alert('默认简历不能删除');return;}
+    if(!confirm('确定删除这份简历？')) return;
+    fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'delete_resume',resume_id:id})
+    }).then(function(){location.hash='resume';location.reload();});
+  });
   var chatSend=document.getElementById('resume-chat-send');
   var chatClear=document.getElementById('resume-chat-clear');
   var resumeHistory=[];
 
   // Load saved resume
   fetch('/api/resume').then(r=>r.json()).then(function(d){
+    if(d.resume_list) populateResumeSelector(d.resume_list);
     if(d.content) input.value=d.content;
     if(d.analysis) analysisDiv.innerHTML=mdToHtml(d.analysis);
     if(d.chat_history&&d.chat_history.length>0){
@@ -1508,6 +1555,17 @@ function mdToHtml(md){
 // ====== Settings ======
 (function(){
   var cfg=D.plan_config||{rounds:5,intervals:[1,3,7,14],daily_new:5,daily_review:10,deadline:''};
+  // Populate problem list selector
+  var listSelect=document.getElementById('set-problem-list');
+  var lists=D.available_lists||{};
+  Object.keys(lists).forEach(function(k){
+    var o=document.createElement('option');
+    o.value=k;
+    o.textContent=lists[k].name+' ('+lists[k].count+')';
+    listSelect.appendChild(o);
+  });
+  listSelect.value=cfg.problem_list||'hot100';
+
   document.getElementById('set-rounds').value=cfg.rounds;
   document.getElementById('set-intervals').value=cfg.intervals.join(', ');
   document.getElementById('set-daily-new').value=cfg.daily_new;
@@ -1543,6 +1601,7 @@ function mdToHtml(md){
   document.getElementById('settings-save-btn').addEventListener('click',function(){
     var intervals=document.getElementById('set-intervals').value.split(',').map(function(s){return parseInt(s.trim())}).filter(function(n){return !isNaN(n)&&n>0});
     var newCfg={
+      problem_list:document.getElementById('set-problem-list').value||'hot100',
       rounds:parseInt(document.getElementById('set-rounds').value)||5,
       intervals:intervals,
       daily_new:parseInt(document.getElementById('set-daily-new').value)||5,
@@ -1833,11 +1892,12 @@ def serve_web(
                 self.end_headers()
                 self.wfile.write(body)
             elif self.path == "/api/resume":
-                from .resume import load_resume, load_analysis, load_resume_chat
+                from .resume import load_resume, load_analysis, load_resume_chat, get_resume_list
                 result = {
                     "content": load_resume(),
                     "analysis": load_analysis().get("text", ""),
                     "chat_history": load_resume_chat(),
+                    "resume_list": get_resume_list(),
                 }
                 body = json.dumps(result, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
@@ -1959,7 +2019,28 @@ def serve_web(
                     req = json.loads(raw)
                 except (json.JSONDecodeError, ValueError):
                     req = {}
+                # 检查是否切换了题单
+                old_cfg = load_plan_config()
+                new_list = req.get("problem_list", "hot100")
+                old_list = old_cfg.get("problem_list", "hot100")
                 save_plan_config(req)
+                if new_list != old_list:
+                    # 切换题单：为新题单生成进度表（旧的保留备份）
+                    from .problem_lists import get_problem_list
+                    from .init_plan import _gen_progress_table
+                    from .config import PROGRESS_FILE, PLAN_DIR
+                    import shutil
+                    backup = PLAN_DIR / f"01_进度表_{old_list}.md"
+                    if PROGRESS_FILE.exists() and not backup.exists():
+                        shutil.copy2(PROGRESS_FILE, backup)
+                    # 检查新题单是否有备份
+                    restore = PLAN_DIR / f"01_进度表_{new_list}.md"
+                    if restore.exists():
+                        shutil.copy2(restore, PROGRESS_FILE)
+                    else:
+                        problems = get_problem_list(new_list)
+                        PROGRESS_FILE.write_text(
+                            _gen_progress_table(problems), encoding="utf-8")
                 body = json.dumps({"ok": True}, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -2063,6 +2144,22 @@ def serve_web(
                         result = {"error": "AI not configured or request failed"}
                 elif action == "clear_chat":
                     clear_resume_chat()
+                    result = {"ok": True}
+                elif action == "switch_resume":
+                    from .resume import switch_resume
+                    switch_resume(req.get("resume_id", "default"))
+                    result = {"ok": True}
+                elif action == "create_resume":
+                    from .resume import create_resume
+                    new_id = create_resume(req.get("name", "新简历"))
+                    result = {"ok": True, "id": new_id}
+                elif action == "delete_resume":
+                    from .resume import delete_resume
+                    delete_resume(req.get("resume_id", ""))
+                    result = {"ok": True}
+                elif action == "rename_resume":
+                    from .resume import rename_resume
+                    rename_resume(req.get("resume_id", ""), req.get("name", ""))
                     result = {"ok": True}
                 else:
                     result = {"error": "unknown action"}

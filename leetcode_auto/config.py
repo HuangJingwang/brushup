@@ -59,6 +59,7 @@ _DEFAULT_PLAN_CONFIG = {
     "daily_new": 5,                     # 每日新题建议数
     "daily_review": 10,                 # 每日复习建议数
     "deadline": "",                     # 截止日期，格式 YYYY-MM-DD，空=不设置
+    "problem_list": "hot100",           # 当前题单：hot100 / offer75 / top150
 }
 
 

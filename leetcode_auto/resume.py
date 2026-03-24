@@ -15,6 +15,91 @@ RESUME_FILE = DATA_DIR / "resume_content.txt"
 RESUME_ANALYSIS_FILE = DATA_DIR / "resume_analysis.json"
 RESUME_CHAT_FILE = DATA_DIR / "resume_chat_history.json"
 
+# 多简历管理
+RESUMES_DIR = DATA_DIR / "resumes"
+RESUMES_DIR.mkdir(parents=True, exist_ok=True)
+RESUME_INDEX_FILE = DATA_DIR / "resume_index.json"
+
+
+def _load_resume_index() -> dict:
+    """加载简历索引 {current: "default", list: [{id, name}]}"""
+    if RESUME_INDEX_FILE.exists():
+        try:
+            return json.loads(RESUME_INDEX_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"current": "default", "list": [{"id": "default", "name": "默认简历"}]}
+
+
+def _save_resume_index(index: dict):
+    RESUME_INDEX_FILE.write_text(
+        json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _resume_path(resume_id: str) -> Path:
+    return RESUMES_DIR / f"{resume_id}.txt"
+
+
+def _analysis_path(resume_id: str) -> Path:
+    return RESUMES_DIR / f"{resume_id}_analysis.json"
+
+
+def _chat_path(resume_id: str) -> Path:
+    return RESUMES_DIR / f"{resume_id}_chat.json"
+
+
+def get_resume_list() -> dict:
+    """返回简历列表和当前选中。"""
+    idx = _load_resume_index()
+    # 迁移：如果旧文件存在且 default 不存在
+    default_path = _resume_path("default")
+    if not default_path.exists() and RESUME_FILE.exists():
+        import shutil
+        shutil.copy2(RESUME_FILE, default_path)
+        if RESUME_ANALYSIS_FILE.exists():
+            shutil.copy2(RESUME_ANALYSIS_FILE, _analysis_path("default"))
+        if RESUME_CHAT_FILE.exists():
+            shutil.copy2(RESUME_CHAT_FILE, _chat_path("default"))
+    return idx
+
+
+def switch_resume(resume_id: str):
+    idx = _load_resume_index()
+    idx["current"] = resume_id
+    _save_resume_index(idx)
+
+
+def create_resume(name: str) -> str:
+    idx = _load_resume_index()
+    new_id = f"resume_{len(idx['list']) + 1}"
+    idx["list"].append({"id": new_id, "name": name})
+    idx["current"] = new_id
+    _save_resume_index(idx)
+    _resume_path(new_id).write_text("", encoding="utf-8")
+    return new_id
+
+
+def delete_resume(resume_id: str):
+    if resume_id == "default":
+        return
+    idx = _load_resume_index()
+    idx["list"] = [r for r in idx["list"] if r["id"] != resume_id]
+    if idx["current"] == resume_id:
+        idx["current"] = "default"
+    _save_resume_index(idx)
+    for p in [_resume_path(resume_id), _analysis_path(resume_id), _chat_path(resume_id)]:
+        if p.exists():
+            p.unlink()
+
+
+def rename_resume(resume_id: str, new_name: str):
+    idx = _load_resume_index()
+    for r in idx["list"]:
+        if r["id"] == resume_id:
+            r["name"] = new_name
+            break
+    _save_resume_index(idx)
+
 # ---------------------------------------------------------------------------
 # LaTeX 简历模板
 # ---------------------------------------------------------------------------
@@ -91,29 +176,35 @@ RESUME_TEMPLATE = """# 张三
 # ---------------------------------------------------------------------------
 
 
+def _current_id() -> str:
+    return _load_resume_index().get("current", "default")
+
+
 def save_resume(content: str):
-    """保存用户简历内容。"""
-    RESUME_FILE.write_text(content, encoding="utf-8")
+    """保存当前简历内容。"""
+    _resume_path(_current_id()).write_text(content, encoding="utf-8")
 
 
 def load_resume() -> str:
-    """加载用户简历内容。"""
-    if RESUME_FILE.exists():
-        return RESUME_FILE.read_text(encoding="utf-8")
+    """加载当前简历内容。"""
+    p = _resume_path(_current_id())
+    if p.exists():
+        return p.read_text(encoding="utf-8")
     return ""
 
 
 def save_analysis(analysis: dict):
-    """保存分析结果。"""
-    RESUME_ANALYSIS_FILE.write_text(
+    """保存当前简历分析结果。"""
+    _analysis_path(_current_id()).write_text(
         json.dumps(analysis, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def load_analysis() -> dict:
-    """加载分析结果。"""
-    if RESUME_ANALYSIS_FILE.exists():
+    """加载当前简历分析结果。"""
+    p = _analysis_path(_current_id())
+    if p.exists():
         try:
-            return json.loads(RESUME_ANALYSIS_FILE.read_text(encoding="utf-8"))
+            return json.loads(p.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, IOError):
             pass
     return {}
@@ -127,10 +218,11 @@ _MAX_RESUME_HISTORY = 30
 
 
 def load_resume_chat() -> list:
-    if not RESUME_CHAT_FILE.exists():
+    p = _chat_path(_current_id())
+    if not p.exists():
         return []
     try:
-        data = json.loads(RESUME_CHAT_FILE.read_text(encoding="utf-8"))
+        data = json.loads(p.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
     except (json.JSONDecodeError, IOError):
         return []
@@ -140,13 +232,14 @@ def save_resume_chat(history: list):
     from .memory import compress_history
     compressed = compress_history(history)
     trimmed = compressed[-_MAX_RESUME_HISTORY * 2:]
-    RESUME_CHAT_FILE.write_text(
+    _chat_path(_current_id()).write_text(
         json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def clear_resume_chat():
-    if RESUME_CHAT_FILE.exists():
-        RESUME_CHAT_FILE.unlink()
+    p = _chat_path(_current_id())
+    if p.exists():
+        p.unlink()
 
 
 # ---------------------------------------------------------------------------

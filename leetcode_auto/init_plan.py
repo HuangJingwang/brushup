@@ -180,17 +180,24 @@ HOT100 = [
 ]
 
 
-def _gen_progress_table() -> str:
+def _gen_progress_table(problems=None) -> str:
+    if problems is None:
+        problems = HOT100
+    from .config import get_round_keys
+    rkeys = get_round_keys()
+    r_headers = " | ".join(rk.upper() for rk in rkeys)
+    r_aligns = " | ".join(":---:" for _ in rkeys)
+    r_empty = " | ".join("  " for _ in rkeys)
     lines = [
         "# 刷题进度表\n",
         "\n",
-        "| 序号 | 题目 | 难度 | R1 | R2 | R3 | R4 | R5 | 状态 | 最后完成日期 |\n",
-        "| ---: | --- | --- | :---: | :---: | :---: | :---: | :---: | --- | --- |\n",
+        f"| 序号 | 题目 | 难度 | {r_headers} | 状态 | 最后完成日期 |\n",
+        f"| ---: | --- | --- | {r_aligns} | --- | --- |\n",
     ]
-    for idx, (num, name, slug, diff) in enumerate(HOT100, 1):
+    for idx, (num, name, slug, diff) in enumerate(problems, 1):
         link = f"[{num}. {name}](https://leetcode.cn/problems/{slug}/)"
         lines.append(
-            f"| {idx} | {link} | {diff} |   |   |   |   |   |   | — |\n"
+            f"| {idx} | {link} | {diff} | {r_empty} |   | — |\n"
         )
     return "".join(lines)
 
