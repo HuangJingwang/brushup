@@ -558,6 +558,10 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="user-profile" id="user-login-bar" style="display:none">
     <button id="user-login-btn" class="login-btn">Login LeetCode</button>
   </div>
+  <div class="nav-item" id="sync-btn-nav" style="display:none;cursor:pointer;">
+    <span class="nav-icon">&#128259;</span><span id="sync-btn-text">Sync Now</span>
+  </div>
+  <div class="nav-sep" id="sync-sep" style="display:none"></div>
   <div class="nav-item active" data-tab="dashboard">
     <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">Dashboard</span>
   </div>
@@ -969,6 +973,37 @@ const D = __DATA_JSON__;
   } else {
     loginBar.style.display='flex';
   }
+})();
+
+// ====== Sync ======
+(function(){
+  var syncNav=document.getElementById('sync-btn-nav');
+  var syncSep=document.getElementById('sync-sep');
+  var syncText=document.getElementById('sync-btn-text');
+  var p=D.user_profile;
+  if(p&&p.username){
+    syncNav.style.display='flex';
+    syncSep.style.display='';
+  }
+  syncNav.addEventListener('click',function(){
+    syncText.textContent='Syncing...';
+    syncNav.style.pointerEvents='none';
+    syncNav.style.opacity='0.5';
+    fetch('/api/sync',{method:'POST'}).then(function(){
+      // Poll for data change
+      var oldRounds=D.done_rounds;
+      var poll=setInterval(function(){
+        fetch('/api/data').then(function(r){return r.json()}).then(function(nd){
+          if(nd.done_rounds!==oldRounds||nd.total!==D.total){
+            clearInterval(poll);
+            location.reload();
+          }
+        }).catch(function(){});
+      },3000);
+      // Timeout: reload anyway after 30s
+      setTimeout(function(){clearInterval(poll);syncText.textContent='Sync Now';syncNav.style.pointerEvents='';syncNav.style.opacity='1';location.reload();},30000);
+    });
+  });
 })();
 
 // ====== Logout / Login ======
@@ -2129,6 +2164,23 @@ def serve_web(
                 self.end_headers()
                 self.wfile.write(body)
                 return
+            elif self.path == "/api/sync":
+                import threading
+                from .sync import sync
+                result = {"status": "started"}
+                def _do_sync():
+                    try:
+                        sync(interactive=False)
+                    except Exception:
+                        pass
+                threading.Thread(target=_do_sync, daemon=True).start()
+                body = json.dumps(result).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             elif self.path == "/api/login":
                 import threading
                 from .leetcode_api import browser_login
@@ -2136,6 +2188,9 @@ def serve_web(
                 def _do_login():
                     try:
                         browser_login()
+                        # 登录成功后自动同步
+                        from .sync import sync
+                        sync(interactive=False)
                     except Exception:
                         pass
                 threading.Thread(target=_do_login, daemon=True).start()
