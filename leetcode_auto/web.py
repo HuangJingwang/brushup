@@ -559,44 +559,44 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
     <button id="user-login-btn" class="login-btn">Login LeetCode</button>
   </div>
   <div class="nav-item active" data-tab="dashboard">
-    <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">总览</span>
+    <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">Dashboard</span>
   </div>
   <div class="nav-item" data-tab="chat">
-    <span class="nav-icon">&#128172;</span><span data-i18n="nav_chat">AI 对话</span>
+    <span class="nav-icon">&#128172;</span><span data-i18n="nav_chat">AI Chat</span>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="progress">
-    <span class="nav-icon">&#128221;</span><span data-i18n="nav_progress">进度表</span>
+    <span class="nav-icon">&#128221;</span><span data-i18n="nav_progress">Progress</span>
   </div>
   <div class="nav-item" data-tab="review" id="nav-review">
-    <span class="nav-icon">&#128214;</span><span data-i18n="nav_review">待复习</span>
+    <span class="nav-icon">&#128214;</span><span data-i18n="nav_review">Review</span>
   </div>
   <div class="nav-item" data-tab="checkin">
-    <span class="nav-icon">&#128197;</span><span data-i18n="nav_checkin">打卡记录</span>
+    <span class="nav-icon">&#128197;</span><span data-i18n="nav_checkin">Check-in</span>
   </div>
   <div class="nav-item" data-tab="optimize" id="nav-optimize">
-    <span class="nav-icon">&#9889;</span><span data-i18n="nav_optimize">代码优化</span>
+    <span class="nav-icon">&#9889;</span><span data-i18n="nav_optimize">Optimize</span>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="resume">
-    <span class="nav-icon">&#128196;</span><span data-i18n="nav_resume">简历优化</span>
+    <span class="nav-icon">&#128196;</span><span data-i18n="nav_resume">Resume</span>
   </div>
   <div class="nav-item" data-tab="interview">
-    <span class="nav-icon">&#127908;</span><span data-i18n="nav_interview">模拟面试</span>
+    <span class="nav-icon">&#127908;</span><span data-i18n="nav_interview">Mock Interview</span>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="settings">
-    <span class="nav-icon">&#9881;</span><span data-i18n="nav_settings">设置</span>
+    <span class="nav-icon">&#9881;</span><span data-i18n="nav_settings">Settings</span>
   </div>
   <div class="sidebar-footer">
-    <div class="sidebar-info" data-i18n="data_updated">数据更新：__TODAY__</div>
+    <div class="sidebar-info" data-i18n="data_updated">Data: __TODAY__</div>
     <div class="lang-toggle">
       <button class="lang-btn" id="lang-en" onclick="switchLang('en')">EN</button>
       <button class="lang-btn" id="lang-zh" onclick="switchLang('zh')">中文</button>
     </div>
     <div class="theme-toggle">
-      <button class="theme-btn" id="theme-dark" onclick="switchTheme('dark')" data-i18n="theme_dark">深色</button>
-      <button class="theme-btn" id="theme-light" onclick="switchTheme('light')" data-i18n="theme_light">浅色</button>
+      <button class="theme-btn" id="theme-dark" onclick="switchTheme('dark')" data-i18n="theme_dark">Dark</button>
+      <button class="theme-btn" id="theme-light" onclick="switchTheme('light')" data-i18n="theme_light">Light</button>
     </div>
   </div>
 </nav>
@@ -605,31 +605,31 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 总览 ==================== -->
 <div class="tab-content active" id="tab-dashboard">
-  <div class="page-title"><span class="icon">&#127919;</span> <span data-i18n="nav_dashboard">总览</span></div>
+  <div class="page-title"><span class="icon">&#127919;</span> <span data-i18n="nav_dashboard">Dashboard</span></div>
   <div class="stats-row">
-    <div class="stat-card"><div class="num">__DONE_ROUNDS__<span class="num-sub">/ __TOTAL_ROUNDS__</span></div><div class="label" data-i18n="stat_rounds">已完成轮次</div></div>
-    <div class="stat-card"><div class="num">__RATE__%</div><div class="label" data-i18n="stat_rate">完成率</div></div>
-    <div class="stat-card"><div class="num">__DONE_ALL__<span class="num-sub">/ __TOTAL__</span></div><div class="label" data-i18n="stat_pass">5 轮全通</div></div>
-    <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label" data-i18n="stat_streak">连续打卡</div></div>
-    <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label" data-i18n="stat_total_days">累计打卡</div></div>
-    <div class="stat-card"><div class="num num-sm">__EST__</div><div class="label" data-i18n="stat_est">预估完成</div></div>
+    <div class="stat-card"><div class="num">__DONE_ROUNDS__<span class="num-sub">/ __TOTAL_ROUNDS__</span></div><div class="label" data-i18n="stat_rounds">Completed Rounds</div></div>
+    <div class="stat-card"><div class="num">__RATE__%</div><div class="label" data-i18n="stat_rate">Completion Rate</div></div>
+    <div class="stat-card"><div class="num">__DONE_ALL__<span class="num-sub">/ __TOTAL__</span></div><div class="label" data-i18n="stat_pass">5-Round Pass</div></div>
+    <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label" data-i18n="stat_streak">Streak Days</div></div>
+    <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label" data-i18n="stat_total_days">Total Days</div></div>
+    <div class="stat-card"><div class="num num-sm">__EST__</div><div class="label" data-i18n="stat_est">Est. Completion</div></div>
   </div>
   <div class="today-grid">
     <div class="today-card">
-      <h2><span data-i18n="today_new">今日新题</span> <span class="count count-accent" id="new-count"></span></h2>
+      <h2><span data-i18n="today_new">Today: New</span> <span class="count count-accent" id="new-count"></span></h2>
       <ul class="today-list" id="today-new"></ul>
     </div>
     <div class="today-card">
-      <h2><span data-i18n="today_review">今日复习</span> <span class="count count-red" id="review-count-dash"></span></h2>
+      <h2><span data-i18n="today_review">Today: Review</span> <span class="count count-red" id="review-count-dash"></span></h2>
       <ul class="today-list" id="today-review"></ul>
     </div>
   </div>
   <div class="grid">
-    <div class="card"><h2 data-i18n="card_rate">完成率</h2><div id="gauge" class="chart"></div></div>
-    <div class="card"><h2 data-i18n="card_rounds">各轮进度</h2><div id="rounds" class="chart"></div></div>
-    <div class="card"><h2 data-i18n="card_radar">分类能力</h2><div id="radar" class="chart"></div></div>
-    <div class="card"><h2 data-i18n="card_trend">每日趋势</h2><div id="trend" class="chart"></div></div>
-    <div class="card card-full"><h2 data-i18n="card_heatmap">刷题热力图（近 365 天）</h2><div id="heatmap" class="chart-lg"></div></div>
+    <div class="card"><h2 data-i18n="card_rate">Completion Rate</h2><div id="gauge" class="chart"></div></div>
+    <div class="card"><h2 data-i18n="card_rounds">Round Progress</h2><div id="rounds" class="chart"></div></div>
+    <div class="card"><h2 data-i18n="card_radar">Category Radar</h2><div id="radar" class="chart"></div></div>
+    <div class="card"><h2 data-i18n="card_trend">Daily Trend</h2><div id="trend" class="chart"></div></div>
+    <div class="card card-full"><h2 data-i18n="card_heatmap">Heatmap (365 days)</h2><div id="heatmap" class="chart-lg"></div></div>
     <div class="card card-full"><h2>Trend</h2><div id="trend-stats" style="display:flex;gap:20px;flex-wrap:wrap;padding:8px 0;font-size:14px;"></div></div>
     <div class="card card-full"><h2>Review Calendar (14 days)</h2><div id="review-calendar" style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>
   </div>
@@ -637,33 +637,33 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 进度表 ==================== -->
 <div class="tab-content" id="tab-progress">
-  <div class="page-title"><span class="icon">&#128221;</span> <span data-i18n="nav_progress">进度表</span> <span class="table-count" id="table-count"></span></div>
+  <div class="page-title"><span class="icon">&#128221;</span> <span data-i18n="nav_progress">Progress</span> <span class="table-count" id="table-count"></span></div>
   <div class="table-controls">
-    <input type="text" id="search-input" placeholder="搜索题目..." data-i18n="search_ph">
+    <input type="text" id="search-input" placeholder="Search..." data-i18n="search_ph">
     <select id="filter-difficulty">
-      <option value="" data-i18n="diff_all">全部难度</option>
-      <option value="easy" data-i18n="diff_easy">简单</option>
-      <option value="medium" data-i18n="diff_medium">中等</option>
-      <option value="hard" data-i18n="diff_hard">困难</option>
+      <option value="" data-i18n="diff_all">All Difficulty</option>
+      <option value="easy" data-i18n="diff_easy">Easy</option>
+      <option value="medium" data-i18n="diff_medium">Medium</option>
+      <option value="hard" data-i18n="diff_hard">Hard</option>
     </select>
-    <select id="filter-category"><option value="" data-i18n="cat_all">全部分类</option></select>
+    <select id="filter-category"><option value="" data-i18n="cat_all">All Categories</option></select>
     <select id="filter-status">
-      <option value="" data-i18n="status_all">全部状态</option>
-      <option value="not-started" data-i18n="status_ns">未开始</option>
-      <option value="in-progress" data-i18n="status_ip">进行中</option>
-      <option value="completed" data-i18n="status_done">已完成</option>
+      <option value="" data-i18n="status_all">All Status</option>
+      <option value="not-started" data-i18n="status_ns">Not Started</option>
+      <option value="in-progress" data-i18n="status_ip">In Progress</option>
+      <option value="completed" data-i18n="status_done">Completed</option>
     </select>
-    <button id="clear-filters" class="clear-btn" style="display:none;" data-i18n="clear_filter">清除筛选</button>
-    <button id="export-csv-btn" class="clear-btn" data-i18n="export_csv">导出 CSV</button>
+    <button id="clear-filters" class="clear-btn" style="display:none;" data-i18n="clear_filter">Clear</button>
+    <button id="export-csv-btn" class="clear-btn" data-i18n="export_csv">Export CSV</button>
   </div>
   <div class="table-wrapper">
     <table class="progress-table">
       <thead>
         <tr>
-          <th>#</th><th data-i18n="th_title">题目</th><th data-i18n="th_diff">难度</th><th data-i18n="th_cat">分类</th>
+          <th>#</th><th data-i18n="th_title">Title</th><th data-i18n="th_diff">Difficulty</th><th data-i18n="th_cat">Category</th>
           <th class="round-cell">R1</th><th class="round-cell">R2</th>
           <th class="round-cell">R3</th><th class="round-cell">R4</th>
-          <th class="round-cell">R5</th><th data-i18n="th_status">状态</th>
+          <th class="round-cell">R5</th><th data-i18n="th_status">Status</th>
         </tr>
       </thead>
       <tbody id="progress-body"></tbody>
@@ -673,16 +673,16 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 打卡记录 ==================== -->
 <div class="tab-content" id="tab-checkin">
-  <div class="page-title"><span class="icon">&#128197;</span> <span data-i18n="nav_checkin">打卡记录</span></div>
+  <div class="page-title"><span class="icon">&#128197;</span> <span data-i18n="nav_checkin">Check-in</span></div>
   <div class="grid">
-    <div class="card card-full"><h2 data-i18n="card_checkin_trend">每日趋势</h2><div id="checkin-trend" class="chart"></div></div>
+    <div class="card card-full"><h2 data-i18n="card_checkin_trend">Daily Trend</h2><div id="checkin-trend" class="chart"></div></div>
   </div>
   <div class="timeline" id="checkin-timeline"></div>
 </div>
 
 <!-- ==================== 待复习 ==================== -->
 <div class="tab-content" id="tab-review">
-  <div class="page-title"><span class="icon">&#128214;</span> <span data-i18n="nav_review">待复习</span> <span class="table-count" id="review-count"></span></div>
+  <div class="page-title"><span class="icon">&#128214;</span> <span data-i18n="nav_review">Review</span> <span class="table-count" id="review-count"></span></div>
   <div class="card" id="review-card">
     <ul class="review-list" id="review-list"></ul>
   </div>
@@ -690,13 +690,13 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 代码优化 ==================== -->
 <div class="tab-content" id="tab-optimize">
-  <div class="page-title"><span class="icon">&#9889;</span> <span data-i18n="nav_optimize">代码优化</span> <span class="table-count" id="opt-count"></span></div>
+  <div class="page-title"><span class="icon">&#9889;</span> <span data-i18n="nav_optimize">Optimize</span> <span class="table-count" id="opt-count"></span></div>
   <div id="optimize-list"></div>
 </div>
 
 <!-- ==================== 简历优化 ==================== -->
 <div class="tab-content" id="tab-resume">
-  <div class="page-title"><span class="icon">&#128196;</span> <span data-i18n="nav_resume">简历优化</span></div>
+  <div class="page-title"><span class="icon">&#128196;</span> <span data-i18n="nav_resume">Resume</span></div>
   <div class="resume-actions" style="margin-bottom:12px">
     <select id="resume-selector" style="min-width:160px"></select>
     <button id="resume-new-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;">+ 新建</button>
@@ -705,14 +705,14 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="resume-layout">
     <div class="resume-left">
       <div class="resume-actions">
-        <a href="/api/resume/template" download="resume_template.md" data-i18n="resume_dl">下载简历模板</a>
-        <button class="primary" id="resume-analyze-btn" data-i18n="resume_analyze">AI 分析</button>
-        <button id="resume-gen-interview-btn" data-i18n="resume_gen">生成面试题</button>
-        <button id="resume-save-btn" data-i18n="resume_save">保存</button>
-        <button class="preview-toggle" id="resume-preview-toggle" data-i18n="resume_preview">预览</button>
+        <a href="/api/resume/template" download="resume_template.md" data-i18n="resume_dl">Download Template</a>
+        <button class="primary" id="resume-analyze-btn" data-i18n="resume_analyze">AI Analyze</button>
+        <button id="resume-gen-interview-btn" data-i18n="resume_gen">Generate Questions</button>
+        <button id="resume-save-btn" data-i18n="resume_save">Save</button>
+        <button class="preview-toggle" id="resume-preview-toggle" data-i18n="resume_preview">Preview</button>
         <button id="resume-versions-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;">History</button>
       </div>
-      <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容（Markdown 格式）...&#10;&#10;可下载 LapisCV 模板，填入信息后粘贴到此处，点击 Preview 预览。" data-i18n="resume_ph"></textarea>
+      <textarea class="resume-textarea" id="resume-input" placeholder="Paste resume content (Markdown)...&#10;&#10;Download LapisCV template, fill in, paste here, click Preview." data-i18n="resume_ph"></textarea>
     </div>
     <div class="resume-preview-wrap">
       <div class="lapis-preview" id="resume-preview-content"></div>
@@ -721,15 +721,15 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
       <div class="resume-analysis" id="resume-analysis">
         <div class="resume-empty">
           <div class="icon">&#128196;</div>
-          <p data-i18n="resume_empty">在左侧粘贴简历内容，然后点击「AI 分析」</p>
+          <p data-i18n="resume_empty">Paste your resume on the left, then click "AI Analyze"</p>
         </div>
       </div>
       <div class="resume-chat-box">
         <div class="resume-chat-messages" id="resume-chat-messages"></div>
         <div class="chat-input-row">
-          <input type="text" id="resume-chat-input" placeholder="向 AI 提问改进建议..." autocomplete="off" data-i18n="resume_chat_ph">
-          <button id="resume-chat-send" data-i18n="btn_send">发送</button>
-          <button id="resume-chat-clear" style="background:var(--border);" data-i18n="btn_clear">清空</button>
+          <input type="text" id="resume-chat-input" placeholder="Ask AI for resume improvement..." autocomplete="off" data-i18n="resume_chat_ph">
+          <button id="resume-chat-send" data-i18n="btn_send">Send</button>
+          <button id="resume-chat-clear" style="background:var(--border);" data-i18n="btn_clear">Clear</button>
         </div>
       </div>
     </div>
@@ -738,13 +738,13 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 模拟面试 ==================== -->
 <div class="tab-content" id="tab-interview">
-  <div class="page-title"><span class="icon">&#127908;</span> <span data-i18n="nav_interview">模拟面试</span></div>
+  <div class="page-title"><span class="icon">&#127908;</span> <span data-i18n="nav_interview">Mock Interview</span></div>
   <div class="interview-layout">
     <div class="interview-left">
       <div class="interview-questions" id="interview-questions">
         <div class="resume-empty">
           <div class="icon">&#127908;</div>
-          <p data-i18n="interview_empty">在「简历优化」页面粘贴简历后，点击「生成面试题」</p>
+          <p data-i18n="interview_empty">Paste resume in "Resume" tab, then click "Generate Questions"</p>
         </div>
       </div>
     </div>
@@ -752,16 +752,16 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
       <div class="interview-chat">
         <div class="interview-chat-header">
           <span>AI 面试官</span>
-          <span class="interview-status status-idle" id="interview-status" data-i18n="interview_status_idle">未开始</span>
+          <span class="interview-status status-idle" id="interview-status" data-i18n="interview_status_idle">Not Started</span>
         </div>
         <div id="interview-report-area" style="display:none;padding:12px 16px;overflow-y:auto;max-height:50%;border-bottom:1px solid var(--border);"></div>
         <div class="interview-chat-messages" id="interview-chat-messages"></div>
         <div class="chat-input-row" style="padding:12px;">
-          <button id="interview-start-btn" class="primary" style="padding:10px 16px;" data-i18n="interview_start">开始面试</button>
-          <input type="text" id="interview-chat-input" placeholder="输入你的回答..." autocomplete="off" disabled data-i18n="interview_ans_ph">
-          <button id="interview-chat-send" disabled data-i18n="btn_send">发送</button>
+          <button id="interview-start-btn" class="primary" style="padding:10px 16px;" data-i18n="interview_start">Start Interview</button>
+          <input type="text" id="interview-chat-input" placeholder="Type your answer..." autocomplete="off" disabled data-i18n="interview_ans_ph">
+          <button id="interview-chat-send" disabled data-i18n="btn_send">Send</button>
           <button id="interview-report-btn" style="background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:13px;cursor:pointer;">Report</button>
-          <button id="interview-chat-clear" style="background:var(--border);" data-i18n="btn_clear">重置</button>
+          <button id="interview-chat-clear" style="background:var(--border);" data-i18n="btn_clear">Clear</button>
         </div>
       </div>
     </div>
@@ -770,54 +770,54 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <!-- ==================== 设置 ==================== -->
 <div class="tab-content" id="tab-settings">
-  <div class="page-title"><span class="icon">&#9881;</span> <span data-i18n="nav_settings">设置</span></div>
+  <div class="page-title"><span class="icon">&#9881;</span> <span data-i18n="nav_settings">Settings</span></div>
   <div class="settings-form">
     <div class="settings-group">
-      <label data-i18n="settings_list">题单</label>
+      <label data-i18n="settings_list">Problem List</label>
       <select id="set-problem-list"></select>
     </div>
     <div class="settings-row">
       <div class="settings-group">
-        <label data-i18n="settings_rounds">复习轮数</label>
+        <label data-i18n="settings_rounds">Review Rounds</label>
         <input type="number" id="set-rounds" min="2" max="10" value="5">
       </div>
       <div class="settings-group">
-        <label data-i18n="settings_deadline">截止日期</label>
+        <label data-i18n="settings_deadline">Deadline</label>
         <input type="date" id="set-deadline" value="">
-        <div class="settings-hint" data-i18n="settings_deadline_hint">留空 = 不限制</div>
+        <div class="settings-hint" data-i18n="settings_deadline_hint">Empty = no limit</div>
       </div>
     </div>
     <div class="settings-group">
-      <label data-i18n="settings_intervals">复习间隔（天）</label>
+      <label data-i18n="settings_intervals">Review Intervals (days)</label>
       <input type="text" id="set-intervals" placeholder="1, 3, 7, 14">
       <div class="settings-hint">R2, R3, R4, ... (comma separated)</div>
     </div>
     <div class="settings-row">
       <div class="settings-group">
-        <label data-i18n="settings_daily_new">每日新题建议</label>
+        <label data-i18n="settings_daily_new">Daily New Suggestion</label>
         <input type="number" id="set-daily-new" min="1" max="20" value="5">
       </div>
       <div class="settings-group">
-        <label data-i18n="settings_daily_review">每日复习建议</label>
+        <label data-i18n="settings_daily_review">Daily Review Suggestion</label>
         <input type="number" id="set-daily-review" min="1" max="30" value="10">
       </div>
     </div>
-    <button class="settings-save-btn" id="settings-save-btn" data-i18n="settings_save">保存设置</button>
+    <button class="settings-save-btn" id="settings-save-btn" data-i18n="settings_save">Save Settings</button>
   </div>
   <div class="pace-card" id="pace-card"></div>
 </div>
 
 <!-- ==================== AI 对话 ==================== -->
 <div class="tab-content" id="tab-chat">
-  <div class="page-title"><span class="icon">&#128172;</span> <span data-i18n="nav_chat">AI 对话</span></div>
+  <div class="page-title"><span class="icon">&#128172;</span> <span data-i18n="nav_chat">AI Chat</span></div>
   <div class="chat-container">
     <div class="chat-messages" id="chat-messages">
-      <div class="chat-msg assistant"><div class="chat-bubble" data-i18n="chat_welcome">你好！我是 BrushUp AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？</div></div>
+      <div class="chat-msg assistant"><div class="chat-bubble" data-i18n="chat_welcome">Hi! I'm the BrushUp AI assistant. I can help you:<br>- Check study progress<br>- Recommend problems to solve<br>- Analyze weak areas<br>- Create study plans<br>- Answer algorithm questions<br><br>What would you like to know?</div></div>
     </div>
     <div class="chat-input-row">
-      <input type="text" id="chat-input" placeholder="输入问题..." autocomplete="off" data-i18n="chat_ph">
-      <button id="chat-send" data-i18n="btn_send">发送</button>
-      <button id="chat-clear" style="background:var(--border);" data-i18n="btn_clear">清空</button>
+      <input type="text" id="chat-input" placeholder="Type a question..." autocomplete="off" data-i18n="chat_ph">
+      <button id="chat-send" data-i18n="btn_send">Send</button>
+      <button id="chat-clear" style="background:var(--border);" data-i18n="btn_clear">Clear</button>
     </div>
   </div>
 </div>
@@ -920,6 +920,8 @@ var I18N={
     shortcut_hint:'Shortcuts: 1-9 to switch tabs',
   }
 };
+// Clean up old keys from previous project names
+['leetforge_lang','offerpilot_lang'].forEach(function(k){localStorage.removeItem(k)});
 var currentLang=localStorage.getItem('brushup_lang')||'en';
 
 function t(key){return (I18N[currentLang]||I18N.en)[key]||(I18N.en[key]||key);}
