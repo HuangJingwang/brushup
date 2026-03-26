@@ -196,11 +196,11 @@ def _build_comprehensive_data(
 # ---------------------------------------------------------------------------
 
 _HTML_TEMPLATE = r"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LeetCode Hot100 刷题看板</title>
+<title>BrushUp</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
@@ -450,6 +450,39 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .pace-row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; border-bottom:1px solid rgba(48,54,61,0.5); }
 .pace-row:last-child { border:none; }
 
+/* Trend Stats */
+.trend-grid { display:flex; gap:10px; flex-wrap:wrap; padding:4px 0; }
+.trend-item { background:var(--bg2); padding:12px 16px; border-radius:8px; min-width:120px; flex:1; }
+.trend-value { font-size:20px; font-weight:700; color:var(--accent); }
+.trend-label { font-size:11px; color:var(--dim); margin-top:2px; }
+.trend-sub { font-size:11px; margin-top:2px; }
+.trend-up { color:var(--green); }
+.trend-down { color:var(--red); }
+.trend-neutral { color:var(--dim); }
+
+/* Review Calendar */
+.cal-grid { display:flex; gap:6px; flex-wrap:wrap; padding:4px 0; }
+.cal-day { text-align:center; min-width:56px; padding:8px 6px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; transition:border-color var(--transition); }
+.cal-day:hover { border-color:var(--accent); }
+.cal-day-name { font-size:10px; color:var(--dim); }
+.cal-day-date { font-size:11px; margin:2px 0; color:var(--text); }
+.cal-day-count { font-size:18px; font-weight:700; }
+.cal-0 { color:var(--border); }
+.cal-low { color:var(--green); }
+.cal-mid { color:var(--yellow); }
+.cal-high { color:var(--red); }
+
+/* AI Usage */
+.usage-grid { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.usage-card { background:var(--bg2); padding:12px 16px; border-radius:8px; min-width:140px; }
+.usage-value { font-size:20px; font-weight:700; color:var(--accent); }
+.usage-label { font-size:11px; color:var(--dim); margin-top:2px; }
+
+/* Sync button */
+.sync-nav { display:flex; align-items:center; gap:10px; padding:8px 20px; cursor:pointer; color:var(--accent); font-size:13px; transition:all var(--transition); border-left:3px solid transparent; }
+.sync-nav:hover { background:var(--card); padding-left:24px; }
+.sync-nav.syncing { opacity:0.5; pointer-events:none; }
+
 /* Interview */
 .interview-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 120px); }
 .interview-left { overflow-y:auto; }
@@ -569,7 +602,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="user-profile" id="user-login-bar" style="display:none">
     <button id="user-login-btn" class="login-btn">Login LeetCode</button>
   </div>
-  <div class="nav-item" id="sync-btn-nav" style="display:none;cursor:pointer;">
+  <div class="sync-nav" id="sync-btn-nav" style="display:none">
     <span class="nav-icon">&#128259;</span><span id="sync-btn-text">Sync Now</span>
   </div>
   <div class="nav-sep" id="sync-sep" style="display:none"></div>
@@ -821,6 +854,10 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
     <button class="settings-save-btn" id="settings-save-btn" data-i18n="settings_save">Save Settings</button>
   </div>
   <div class="pace-card" id="pace-card"></div>
+  <div class="pace-card">
+    <h3>AI Usage</h3>
+    <div class="usage-grid" id="ai-usage-display"></div>
+  </div>
 </div>
 
 <!-- ==================== AI 对话 ==================== -->
@@ -1827,6 +1864,20 @@ function mdToHtml(md){
     card.innerHTML=html;
   }
   updatePace();
+
+  // AI Usage display
+  var usageEl=document.getElementById('ai-usage-display');
+  if(usageEl&&D.ai_usage){
+    var u=D.ai_usage;
+    var todayCalls=0,todayTokens=0;
+    var today=new Date().toISOString().slice(0,10);
+    if(u.daily&&u.daily[today]){todayCalls=u.daily[today].calls;todayTokens=u.daily[today].tokens;}
+    usageEl.innerHTML=
+      '<div class="usage-card"><div class="usage-value">'+u.total_calls+'</div><div class="usage-label">Total Calls</div></div>'
+      +'<div class="usage-card"><div class="usage-value">'+(u.total_tokens>1000?(u.total_tokens/1000).toFixed(1)+'k':u.total_tokens)+'</div><div class="usage-label">Total Tokens</div></div>'
+      +'<div class="usage-card"><div class="usage-value">'+todayCalls+'</div><div class="usage-label">Today Calls</div></div>'
+      +'<div class="usage-card"><div class="usage-value">'+(todayTokens>1000?(todayTokens/1000).toFixed(1)+'k':todayTokens)+'</div><div class="usage-label">Today Tokens</div></div>';
+  }
   document.getElementById('set-deadline').addEventListener('change',updatePace);
   document.getElementById('set-daily-new').addEventListener('change',updatePace);
 
@@ -1867,9 +1918,19 @@ function mdToHtml(md){
   var ts=D.trend_stats||{};
   var el=document.getElementById('trend-stats');
   if(!el) return;
-  function card(label,val,sub){return '<div style="background:var(--bg2);padding:10px 16px;border-radius:8px;min-width:120px;"><div style="font-size:20px;font-weight:bold;color:var(--accent)">'+val+'</div><div style="font-size:11px;color:var(--dim)">'+label+'</div>'+(sub?'<div style="font-size:11px;color:'+(sub.indexOf('+')>=0?'var(--green)':'var(--dim)')+'">'+sub+'</div>':'')+'</div>';}
-  var wc=ts.week_change>0?'+'+ts.week_change+'%':ts.week_change+'%';
-  el.innerHTML=card('This Week',ts.this_week||0,wc)+card('Last Week',ts.last_week||0,'')+card('This Month',ts.this_month||0,'')+card('Last Month',ts.last_month||0,'')+card('Avg Daily',ts.avg_daily||0,'last 30 days');
+  function card(label,val,sub,subClass){
+    return '<div class="trend-item"><div class="trend-value">'+val+'</div><div class="trend-label">'+label+'</div>'
+      +(sub?'<div class="trend-sub '+subClass+'">'+sub+'</div>':'')+'</div>';
+  }
+  var wc=ts.week_change||0;
+  var wcText=wc>0?'+'+wc+'%':wc+'%';
+  var wcClass=wc>0?'trend-up':wc<0?'trend-down':'trend-neutral';
+  el.className='trend-grid';
+  el.innerHTML=card('This Week',ts.this_week||0,wcText,wcClass)
+    +card('Last Week',ts.last_week||0,'','')
+    +card('This Month',ts.this_month||0,'','')
+    +card('Last Month',ts.last_month||0,'','')
+    +card('Avg Daily',ts.avg_daily||0,'last 30 days','trend-neutral');
 })();
 
 // ====== Review Calendar ======
@@ -1898,15 +1959,16 @@ function mdToHtml(md){
     });
     // Only count for day 0 (today = all overdue + today), future days = scheduled that day
     if(i>0){ count=(byDate[ds]||[]).length; }
-    var bg=count===0?'var(--border)':count<=2?'var(--green)':count<=5?'var(--yellow)':'var(--red)';
+    var countClass=count===0?'cal-0':count<=2?'cal-low':count<=5?'cal-mid':'cal-high';
     var label=ds.slice(5);
     var dayName=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
-    html+='<div style="text-align:center;min-width:60px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;">'
-      +'<div style="font-size:10px;color:var(--dim)">'+dayName+'</div>'
-      +'<div style="font-size:11px;margin:2px 0">'+label+'</div>'
-      +'<div style="font-size:18px;font-weight:bold;color:'+bg+'">'+count+'</div>'
+    html+='<div class="cal-day">'
+      +'<div class="cal-day-name">'+dayName+'</div>'
+      +'<div class="cal-day-date">'+label+'</div>'
+      +'<div class="cal-day-count '+countClass+'">'+count+'</div>'
       +'</div>';
   }
+  cal.className='cal-grid';
   cal.innerHTML=html;
 })();
 
