@@ -327,6 +327,8 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .review-list li:hover { background:rgba(88,166,255,0.04); }
 .review-list li:last-child { border:none; }
 .review-round { font-size:12px; padding:2px 8px; border-radius:4px; background:rgba(88,166,255,0.15); color:var(--accent); }
+.review-link { color:var(--accent); text-decoration:none; }
+.review-link:hover { text-decoration:underline; }
 .overdue { color:var(--red); font-size:12px; }
 .due-today { color:var(--green); font-size:12px; }
 
@@ -1333,7 +1335,8 @@ function renderTodayPlan(){
     var h='';
     reviews.forEach(function(r){
       var status=r.overdue>0?'<span class="tag tag-review">'+t('overdue').replace('{n}',r.overdue)+'</span>':'<span class="tag tag-new">'+t('due_today')+'</span>';
-      h+='<li><span>'+r.title+'</span><div class="today-meta"><span class="tag tag-cat">'+r.round+'</span>'+status+'</div></li>';
+      var titleHtml=r.slug?'<a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank">'+r.title+'</a>':r.title;
+      h+='<li><span>'+titleHtml+'</span><div class="today-meta"><span class="tag tag-cat">'+r.round+'</span>'+status+'</div></li>';
     });
     revList.innerHTML=h;
   }
@@ -1426,7 +1429,8 @@ document.getElementById('clear-filters').addEventListener('click',function(){
   var html='';
   D.review_due.forEach(function(r){
     var status=r.overdue>0?'<span class="overdue">'+t('overdue').replace('{n}',r.overdue)+'</span>':'<span class="due-today">'+t('due_today')+'</span>';
-    html+='<li><div><span class="review-round">'+r.round+'</span> '+r.title+'</div>'+status+'</li>';
+    var titleHtml=r.slug?'<a class="review-link" href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank">'+r.title+'</a>':r.title;
+    html+='<li><div><span class="review-round">'+r.round+'</span> '+titleHtml+'</div>'+status+'</li>';
   });
   list.innerHTML=html;
 })();

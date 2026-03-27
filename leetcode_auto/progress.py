@@ -220,6 +220,7 @@ def _get_review_due(rows: list[dict], today: date) -> list[dict]:
             due_date = prev_date + timedelta(days=interval)
             if today >= due_date:
                 due.append({
+                    "slug": row.get("title_slug", ""),
                     "title": _display_title(row["title"]),
                     "round": next_rk.upper(),
                     "overdue": (today - due_date).days,
