@@ -16,17 +16,117 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Optional
 
 from .features import ROUND_KEYS, compute_category_stats
-from .config import load_plan_config, save_plan_config, load_push_config, save_push_config
+from .config import DATA_DIR, load_plan_config, save_plan_config, load_push_config, save_push_config
 from datetime import timedelta
 from .init_plan import SLUG_CATEGORY
 
 # Avoid concurrent browser-login flows from duplicate clicks or repeated requests.
 _LOGIN_LOCK = threading.Lock()
 _LOGIN_RUNNING = False
+_TODAY_FOCUS_FILE = DATA_DIR / "today_focus.json"
+_TODAY_FOCUS_COUNT = 5
 
 # ---------------------------------------------------------------------------
 # 数据构建
 # ---------------------------------------------------------------------------
+
+
+def _load_today_focus_state() -> dict:
+    if not _TODAY_FOCUS_FILE.exists():
+        return {}
+    try:
+        return json.loads(_TODAY_FOCUS_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_today_focus_state(state: dict):
+    _TODAY_FOCUS_FILE.write_text(
+        json.dumps(state, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _pick_today_focus(
+    todos: list[dict],
+    desired_count: int,
+    keep_slugs: list[str] | None = None,
+    preferred_category: str = "",
+) -> tuple[list[dict], str]:
+    """Prefer one category, while keeping today's unfinished picks stable."""
+    keep_slugs = keep_slugs or []
+    todo_by_slug = {item["slug"]: item for item in todos}
+    selected = [todo_by_slug[slug] for slug in keep_slugs if slug in todo_by_slug]
+    selected_slugs = {item["slug"] for item in selected}
+
+    grouped: dict[str, list[dict]] = {}
+    ordered_categories: list[str] = []
+    for item in todos:
+        cat = item["category"]
+        if cat not in grouped:
+            grouped[cat] = []
+            ordered_categories.append(cat)
+        grouped[cat].append(item)
+
+    if not preferred_category or preferred_category not in grouped:
+        if selected:
+            preferred_category = selected[0]["category"]
+        else:
+            for cat in ordered_categories:
+                if len(grouped[cat]) >= desired_count:
+                    preferred_category = cat
+                    break
+            if not preferred_category and ordered_categories:
+                order_index = {cat: idx for idx, cat in enumerate(ordered_categories)}
+                preferred_category = max(
+                    ordered_categories,
+                    key=lambda cat: (len(grouped[cat]), -order_index[cat]),
+                )
+
+    if preferred_category in grouped:
+        for item in grouped[preferred_category]:
+            if item["slug"] in selected_slugs:
+                continue
+            selected.append(item)
+            selected_slugs.add(item["slug"])
+            if len(selected) >= desired_count:
+                return selected[:desired_count], preferred_category
+
+    for item in todos:
+        if item["slug"] in selected_slugs:
+            continue
+        selected.append(item)
+        selected_slugs.add(item["slug"])
+        if len(selected) >= desired_count:
+            break
+
+    return selected[:desired_count], preferred_category
+
+
+def _build_today_focus(todos: list[dict], desired_count: int) -> tuple[list[dict], str]:
+    today_str = date.today().isoformat()
+    config = load_plan_config()
+    state = _load_today_focus_state()
+    keep_slugs: list[str] = []
+    preferred_category = ""
+
+    if (
+        state.get("date") == today_str
+        and state.get("problem_list") == config.get("problem_list", "hot100")
+    ):
+        keep_slugs = state.get("slugs", [])
+        preferred_category = state.get("preferred_category", "")
+
+    focus_items, preferred_category = _pick_today_focus(
+        todos, desired_count, keep_slugs, preferred_category,
+    )
+    _save_today_focus_state({
+        "date": today_str,
+        "problem_list": config.get("problem_list", "hot100"),
+        "preferred_category": preferred_category,
+        "slugs": [item["slug"] for item in focus_items],
+    })
+    return focus_items, preferred_category
 
 
 def _compute_trends(checkin_data: list) -> dict:
@@ -148,6 +248,7 @@ def _build_comprehensive_data(
     new_todo = []
     for items in cat_groups.values():
         new_todo.extend(items)
+    today_focus, today_focus_category = _build_today_focus(new_todo, _TODAY_FOCUS_COUNT)
 
     # 构建打卡记录
     checkins = []
@@ -181,6 +282,9 @@ def _build_comprehensive_data(
             for r in review_due
         ],
         "new_todo": new_todo,
+        "today_focus": today_focus,
+        "today_focus_category": today_focus_category,
+        "today_focus_target": _TODAY_FOCUS_COUNT,
         "plan_config": load_plan_config(),
         "ai_usage": __import__('leetcode_auto.ai_analyzer', fromlist=['get_ai_usage']).get_ai_usage(),
         "user_profile": __import__('leetcode_auto.leetcode_api', fromlist=['load_user_profile']).load_user_profile(),
@@ -368,6 +472,19 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .empty-state p { font-size:13px; line-height:1.6; }
 
 /* Today Plan */
+.focus-card { background:linear-gradient(135deg,rgba(88,166,255,0.08),rgba(63,185,80,0.05)); margin-bottom:16px; }
+.focus-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+.focus-head h2 { margin:0; padding:0; border:none; font-size:14px; color:var(--text); text-transform:none; letter-spacing:0; }
+.focus-sub { font-size:12px; color:var(--dim); margin-top:4px; }
+.focus-list { list-style:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+.focus-item { background:rgba(13,17,23,0.55); border:1px solid rgba(48,54,61,0.8); border-radius:10px; padding:12px; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.focus-main { display:flex; flex-direction:column; gap:8px; min-width:0; flex:1; }
+.focus-main a { color:var(--text); text-decoration:none; font-weight:600; overflow-wrap:anywhere; }
+.focus-main a:hover { color:var(--accent); }
+.focus-actions { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.focus-done-btn { background:var(--green); color:#fff; border:none; padding:6px 12px; border-radius:999px; font-size:12px; cursor:pointer; white-space:nowrap; }
+.focus-done-btn:hover { opacity:0.92; }
+.focus-done-btn:disabled { opacity:0.6; cursor:wait; }
 .today-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
 .today-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; transition:border-color var(--transition); }
 .today-card:hover { border-color:rgba(88,166,255,0.2); }
@@ -590,6 +707,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   .main { margin-left:0; padding:16px 12px 70px; }
   .grid { grid-template-columns:1fr; }
   .stats-row { grid-template-columns:repeat(2,1fr); }
+  .focus-list { grid-template-columns:1fr; }
   .today-grid { grid-template-columns:1fr; }
   .chat-container { height:calc(100vh - 160px); }
 }
@@ -672,6 +790,15 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
     <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label" data-i18n="stat_streak">Streak Days</div></div>
     <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label" data-i18n="stat_total_days">Total Days</div></div>
     <div class="stat-card"><div class="num num-sm">__EST__</div><div class="label" data-i18n="stat_est">Est. Completion</div></div>
+  </div>
+  <div class="card card-full focus-card">
+    <div class="focus-head">
+      <div>
+        <h2><span data-i18n="focus_today_title">Today's 5</span> <span class="count count-accent" id="today-focus-count"></span></h2>
+        <div class="focus-sub" id="today-focus-category"></div>
+      </div>
+    </div>
+    <ul class="focus-list" id="today-focus-list"></ul>
   </div>
   <div class="today-grid">
     <div class="today-card">
@@ -933,7 +1060,7 @@ var I18N={
     nav_checkin:'打卡记录',nav_optimize:'代码优化',nav_resume:'简历优化',nav_interview:'模拟面试',
     stat_rounds:'已完成轮次',stat_rate:'完成率',stat_today_ac:'今日 AC',stat_pass:'5 轮全通',
     stat_streak:'连续打卡',stat_total_days:'累计打卡',stat_est:'预估完成',
-    today_new:'今日新题',today_review:'今日复习',
+    today_new:'今日新题',today_review:'今日复习',focus_today_title:'今日 5 题',focus_type_hint:'尽量同类型：{category}',focus_done:'做完了',focus_checking:'检查中...',focus_empty:'今天没有可分配的新题了',focus_not_done:'还没检测到你今天完成这道题，先提交 AC 再点这个按钮。',
     card_rate:'完成率',card_rounds:'各轮进度',card_radar:'分类能力',
     card_trend:'每日趋势',card_heatmap:'刷题热力图（近 365 天）',card_checkin_trend:'每日趋势',
     search_ph:'搜索题目...',diff_all:'全部难度',diff_easy:'简单',diff_medium:'中等',diff_hard:'困难',
@@ -979,7 +1106,7 @@ var I18N={
     nav_checkin:'Check-in',nav_optimize:'Optimize',nav_resume:'Resume',nav_interview:'Mock Interview',
     stat_rounds:'Completed Rounds',stat_rate:'Completion Rate',stat_today_ac:'Today AC',stat_pass:'5-Round Pass',
     stat_streak:'Streak Days',stat_total_days:'Total Days',stat_est:'Est. Completion',
-    today_new:'Today: New',today_review:'Today: Review',
+    today_new:'Today: New',today_review:'Today: Review',focus_today_title:'Today\'s 5',focus_type_hint:'Prefer same type: {category}',focus_done:'Done',focus_checking:'Checking...',focus_empty:'No new problems to assign today.',focus_not_done:'No AC detected for this problem today yet. Submit it first, then click again.',
     card_rate:'Completion Rate',card_rounds:'Round Progress',card_radar:'Category Radar',
     card_trend:'Daily Trend',card_heatmap:'Heatmap (365 days)',card_checkin_trend:'Daily Trend',
     search_ph:'Search...',diff_all:'All Difficulty',diff_easy:'Easy',diff_medium:'Medium',diff_hard:'Hard',
@@ -1301,6 +1428,55 @@ function ensureProblemDataEntry(slug){
 function solutionViewedText(viewed){
   return t(viewed?'solution_viewed':'solution_unviewed');
 }
+function renderTodayFocus(){
+  var list=document.getElementById('today-focus-list');
+  var count=document.getElementById('today-focus-count');
+  var category=document.getElementById('today-focus-category');
+  if(!list||!count||!category) return;
+  var items=D.today_focus||[];
+  var target=D.today_focus_target||5;
+  count.textContent=items.length+'/'+target;
+  category.textContent=D.today_focus_category?t('focus_type_hint').replace('{category}',D.today_focus_category):'';
+  if(items.length===0){
+    list.innerHTML='<li class="focus-item"><div class="focus-main" style="color:var(--dim)">'+t('focus_empty')+'</div></li>';
+    return;
+  }
+  var h='';
+  items.forEach(function(item){
+    var dc=item.difficulty==='简单'?'diff-easy':item.difficulty==='困难'?'diff-hard':'diff-medium';
+    var pdata=ensureProblemDataEntry(item.slug);
+    var viewed=!!pdata.solution_viewed;
+    h+='<li class="focus-item"><div class="focus-main">'
+      +'<a href="https://leetcode.cn/problems/'+item.slug+'/" target="_blank">'+item.title+'</a>'
+      +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+'</div>'
+      +'</div><div class="focus-actions">'
+      +'<button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+item.slug+'\')">'+solutionViewedText(viewed)+'</button>'
+      +'<button class="focus-done-btn" onclick="checkTodayFocusDone(this,\''+item.slug+'\')">'+t('focus_done')+'</button>'
+      +'</div></li>';
+  });
+  list.innerHTML=h;
+}
+function checkTodayFocusDone(btn, slug){
+  if(!btn||btn.disabled) return;
+  var oldText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent=t('focus_checking');
+  fetch('/api/today-focus',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'check_done',slug:slug})
+  }).then(function(r){return r.json()}).then(function(data){
+    if(data&&data.ok&&data.completed_today){
+      location.reload();
+      return;
+    }
+    alert((data&&data.message)||t('focus_not_done'));
+    btn.disabled=false;
+    btn.textContent=oldText;
+  }).catch(function(){
+    alert(t('net_error'));
+    btn.disabled=false;
+    btn.textContent=oldText;
+  });
+}
 function renderTodayPlan(){
   // New todos (R1 not done)
   var newList=document.getElementById('today-new');
@@ -1353,11 +1529,13 @@ function toggleSolutionViewed(event, slug){
   }).then(function(r){return r.json()}).then(function(data){
     if(data&&data.ok){
       setSolutionViewed(slug, next);
+      renderTodayFocus();
       renderTodayPlan();
       renderTable();
     }
   }).catch(function(){});
 }
+renderTodayFocus();
 renderTodayPlan();
 
 // ====== Progress Table ======
@@ -2512,6 +2690,40 @@ def serve_web(
                 elif action == "set_solution_viewed":
                     set_solution_viewed(req.get("slug", ""), req.get("viewed", False))
                     result = {"ok": True}
+                else:
+                    result = {"error": "unknown"}
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/today-focus":
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length)
+                try:
+                    req = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    req = {}
+                action = req.get("action", "")
+                if action == "check_done":
+                    slug = req.get("slug", "")
+                    try:
+                        from .sync import sync
+                        sync(interactive=False)
+                        fresh = _reload_data()
+                        today_str = date.today().isoformat()
+                        row = next((r for r in fresh.get("rows", []) if r.get("slug") == slug), None)
+                        completed_today = bool(row and (row.get("r1") or "").strip() == today_str)
+                        result = {
+                            "ok": True,
+                            "completed_today": completed_today,
+                            "today_focus": fresh.get("today_focus", []),
+                        }
+                        if not completed_today:
+                            result["message"] = "今天还没检测到这道题的新一轮完成记录。"
+                    except Exception as e:
+                        result = {"ok": False, "error": str(e)}
                 else:
                     result = {"error": "unknown"}
                 body = json.dumps(result, ensure_ascii=False).encode("utf-8")
