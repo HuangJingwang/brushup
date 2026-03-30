@@ -6,10 +6,10 @@
 对话历史过长时，自动将旧消息压缩为摘要。
 """
 
-import json
 from typing import Optional
 
 from .config import DATA_DIR, get_ai_config
+from .storage import load_json, save_json
 
 MEMORY_FILE = DATA_DIR / "shared_memory.json"
 
@@ -25,23 +25,17 @@ _KEEP_RECENT = 30
 
 def load_memory() -> dict:
     """加载共享记忆。"""
-    if not MEMORY_FILE.exists():
-        return {"entries": []}
-    try:
-        data = json.loads(MEMORY_FILE.read_text(encoding="utf-8"))
-        if isinstance(data, dict) and "entries" in data:
-            return data
-        return {"entries": []}
-    except (json.JSONDecodeError, IOError):
-        return {"entries": []}
+    data = load_json(MEMORY_FILE)
+    if isinstance(data, dict) and "entries" in data:
+        return data
+    return {"entries": []}
 
 
 def save_memory(memory: dict):
     """保存共享记忆，最多保留 30 条。"""
     entries = memory.get("entries", [])
     memory["entries"] = entries[-30:]
-    MEMORY_FILE.write_text(
-        json.dumps(memory, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(MEMORY_FILE, memory)
 
 
 def add_memory(text: str, source: str = ""):

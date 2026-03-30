@@ -7,13 +7,16 @@
     AI_BASE_URL=https://...            (可选，自定义 API 地址)
 """
 
-import json
+from __future__ import annotations
+
 import re
+import time
 from typing import Optional
 
 import requests
 
 from .config import get_ai_config, LEETCODE_API_URL, LEETCODE_BASE_URL
+from .storage import load_json, save_json
 
 # ---------------------------------------------------------------------------
 # 获取 LeetCode 官方题解
@@ -71,7 +74,8 @@ def fetch_official_solution(
             "solution_text": clean[:3000],  # 截断避免 token 过多
             "has_solution": bool(solution_content),
         }
-    except Exception:
+    except Exception as e:
+        print(f"   获取官方题解失败（{title_slug}）: {e}")
         return {}
 
 
@@ -155,15 +159,29 @@ def _build_prompt(opt: dict, solution_info: dict) -> str:
 from .config import DATA_DIR as _AI_DATA_DIR
 _USAGE_FILE = _AI_DATA_DIR / "ai_usage.json"
 _LAST_AI_ERROR = ""
+_AI_ERROR_FILE = _AI_DATA_DIR / "ai_last_error.json"
 
 
 def _set_last_ai_error(message: str):
     global _LAST_AI_ERROR
     _LAST_AI_ERROR = message
+    if message:
+        from datetime import datetime
+        save_json(_AI_ERROR_FILE, {
+            "error": message,
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
 
 
 def get_last_ai_error() -> str:
-    return _LAST_AI_ERROR
+    global _LAST_AI_ERROR
+    if _LAST_AI_ERROR:
+        return _LAST_AI_ERROR
+    # 从文件恢复（跨进程可见）
+    data = load_json(_AI_ERROR_FILE)
+    if data:
+        return f"{data.get('error', '')} ({data.get('time', '')})"
+    return ""
 
 
 def _format_http_error(e: requests.HTTPError) -> str:
@@ -187,12 +205,7 @@ def _format_http_error(e: requests.HTTPError) -> str:
 
 
 def _load_usage() -> dict:
-    if _USAGE_FILE.exists():
-        try:
-            return json.loads(_USAGE_FILE.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
-            pass
-    return {"total_calls": 0, "total_tokens": 0, "daily": {}}
+    return load_json(_USAGE_FILE, default={"total_calls": 0, "total_tokens": 0, "daily": {}})
 
 
 def _record_usage(tokens: int = 0):
@@ -213,7 +226,7 @@ def _record_usage(tokens: int = 0):
         for k in keys[:-90]:
             del day[k]
     usage["daily"] = day
-    _USAGE_FILE.write_text(json.dumps(usage, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(_USAGE_FILE, usage)
 
 
 def get_ai_usage() -> dict:
@@ -312,15 +325,31 @@ def call_ai(prompt: str, config: dict) -> Optional[str]:
     return call_ai_messages(messages, config)
 
 
+_MAX_RETRIES = 2
+_RETRY_BACKOFF = [3, 8]  # 第1次重试等3秒，第2次等8秒
+
+
 def call_ai_messages(
     messages: list, config: dict, system: str = "",
 ) -> Optional[str]:
-    """多轮调用，支持 system prompt 和历史消息。"""
+    """多轮调用，支持 system prompt 和历史消息。失败自动重试。"""
     provider = config.get("provider", "")
+    fn = None
     if provider == "claude":
-        return _call_claude(messages, config, system)
+        fn = _call_claude
     elif provider == "openai":
-        return _call_openai(messages, config, system)
+        fn = _call_openai
+    if fn is None:
+        return None
+
+    for attempt in range(_MAX_RETRIES + 1):
+        result = fn(messages, config, system)
+        if result is not None:
+            return result
+        if attempt < _MAX_RETRIES:
+            wait = _RETRY_BACKOFF[attempt]
+            print(f"   重试中（{wait}s 后第 {attempt + 2} 次尝试）...")
+            time.sleep(wait)
     return None
 
 
@@ -353,6 +382,9 @@ def analyze_code(
     return call_ai(prompt, ai_config)
 
 
+AI_CALL_INTERVAL = 2  # AI 调用间隔（秒），batch_analyze 和 sync 逐题分析共用
+
+
 def batch_analyze(
     optimizations: list,
     session: str,
@@ -363,17 +395,18 @@ def batch_analyze(
     if not ai_config["enabled"]:
         return optimizations
 
-    for opt in optimizations:
-        if opt.get("ai_analysis"):
-            continue  # 已有分析，跳过
+    pending = [o for o in optimizations if not o.get("ai_analysis")]
+    for i, opt in enumerate(pending):
+        if i > 0:
+            time.sleep(AI_CALL_INTERVAL)
         title = opt.get("title", "")
-        print(f"   AI 分析中：{title}...")
+        print(f"   AI 分析中：{title}...（{i + 1}/{len(pending)}）")
         analysis = analyze_code(opt, session, csrf)
         if analysis:
             opt["ai_analysis"] = analysis
             print(f"   {title} 分析完成")
         else:
-            print(f"   {title} 分析失败")
+            print(f"   {title} 分析失败：{get_last_ai_error() or '未知错误'}")
     return optimizations
 
 
@@ -529,13 +562,8 @@ _MAX_HISTORY = 50
 
 def load_chat_history() -> list:
     """加载历史对话记录。"""
-    if not _CHAT_HISTORY_FILE.exists():
-        return []
-    try:
-        data = json.loads(_CHAT_HISTORY_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, IOError):
-        return []
+    data = load_json(_CHAT_HISTORY_FILE, default=[])
+    return data if isinstance(data, list) else []
 
 
 def save_chat_history(history: list):
@@ -543,10 +571,7 @@ def save_chat_history(history: list):
     from .memory import compress_history
     compressed = compress_history(history)
     trimmed = compressed[-_MAX_HISTORY * 2:]
-    _CHAT_HISTORY_FILE.write_text(
-        json.dumps(trimmed, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    save_json(_CHAT_HISTORY_FILE, trimmed)
 
 
 def clear_chat_history():

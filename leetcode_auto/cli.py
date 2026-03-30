@@ -225,9 +225,28 @@ def cmd_report_daemon(arg: str):
         install_report_daemon()
 
 
+def cmd_web_daemon(arg: str):
+    from .daemon import install_web_daemon, uninstall_web_daemon, web_daemon_status
+    if arg == "status":
+        web_daemon_status()
+    elif arg == "stop":
+        uninstall_web_daemon()
+    else:
+        # arg 可能是端口号或 "start"
+        port = 8100
+        if arg and arg != "start":
+            try:
+                port = int(arg)
+            except ValueError:
+                pass
+        install_web_daemon(port)
+
+
 def cmd_report_push():
     """Generate weekly report and push via webhook/email."""
     from .features import generate_weekly_report, parse_checkin_data, push_report
+    # 先同步最新提交数据，再生成报告
+    sync(interactive=False)
     ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
     _, rows = parse_progress_table(PROGRESS_FILE)
     stats = _compute_stats(rows)
@@ -439,6 +458,9 @@ def main():
     parser.add_argument("--report-daemon", nargs="?", const="start",
                         metavar="ACTION",
                         help="Auto weekly report: start/status/stop (Sunday 20:00)")
+    parser.add_argument("--web-daemon", nargs="?", const="start",
+                        metavar="ACTION",
+                        help="Web 看板开机自启：start [PORT]/status/stop")
     parser.add_argument("--export", metavar="FILE",
                         help="Export all data to a zip file")
     parser.add_argument("--import-data", metavar="FILE",
@@ -473,6 +495,8 @@ def main():
         cmd_report_push()
     elif args.report_daemon is not None:
         cmd_report_daemon(args.report_daemon)
+    elif args.web_daemon is not None:
+        cmd_web_daemon(args.web_daemon)
     elif args.export:
         cmd_export(args.export)
     elif args.import_data:

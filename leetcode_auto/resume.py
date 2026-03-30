@@ -1,11 +1,13 @@
 """简历分析与优化：LaTeX 模板、AI 分析、对话式改进。"""
 
-import json
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Optional
 
 from .config import DATA_DIR, get_ai_config
 from .ai_analyzer import call_ai_messages
+from .storage import load_json, save_json, load_text, save_text
 
 # ---------------------------------------------------------------------------
 # 数据文件
@@ -23,17 +25,14 @@ RESUME_INDEX_FILE = DATA_DIR / "resume_index.json"
 
 def _load_resume_index() -> dict:
     """加载简历索引 {current: "default", list: [{id, name}]}"""
-    if RESUME_INDEX_FILE.exists():
-        try:
-            return json.loads(RESUME_INDEX_FILE.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
-            pass
+    data = load_json(RESUME_INDEX_FILE)
+    if data is not None:
+        return data
     return {"current": "default", "list": [{"id": "default", "name": "默认简历"}]}
 
 
 def _save_resume_index(index: dict):
-    RESUME_INDEX_FILE.write_text(
-        json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(RESUME_INDEX_FILE, index)
 
 
 def _resume_path(resume_id: str) -> Path:
@@ -75,7 +74,7 @@ def create_resume(name: str) -> str:
     idx["list"].append({"id": new_id, "name": name})
     idx["current"] = new_id
     _save_resume_index(idx)
-    _resume_path(new_id).write_text("", encoding="utf-8")
+    save_text(_resume_path(new_id), "")
     return new_id
 
 
@@ -194,17 +193,17 @@ def save_resume(content: str):
     rid = _current_id()
     p = _resume_path(rid)
     # 保存版本快照（只在内容有变化时）
-    old = p.read_text(encoding="utf-8") if p.exists() else ""
+    old = load_text(p)
     if content.strip() and content.strip() != old.strip():
         from datetime import datetime
         vdir = _versions_dir(rid)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        (vdir / f"{ts}.txt").write_text(content, encoding="utf-8")
+        save_text(vdir / f"{ts}.txt", content)
         # 清理旧版本
         versions = sorted(vdir.glob("*.txt"))
         while len(versions) > _MAX_VERSIONS:
             versions.pop(0).unlink()
-    p.write_text(content, encoding="utf-8")
+    save_text(p, content)
 
 
 def get_resume_versions() -> list:
@@ -212,7 +211,7 @@ def get_resume_versions() -> list:
     vdir = _versions_dir(_current_id())
     versions = []
     for f in sorted(vdir.glob("*.txt"), reverse=True):
-        text = f.read_text(encoding="utf-8")
+        text = load_text(f)
         preview = text[:80].replace("\n", " ")
         ts = f.stem  # 20250324_153000
         display = f"{ts[:4]}-{ts[4:6]}-{ts[6:8]} {ts[9:11]}:{ts[11:13]}:{ts[13:15]}"
@@ -224,36 +223,27 @@ def restore_resume_version(filename: str) -> str:
     """恢复指定版本。"""
     vdir = _versions_dir(_current_id())
     p = vdir / filename
-    if p.exists():
-        content = p.read_text(encoding="utf-8")
-        _resume_path(_current_id()).write_text(content, encoding="utf-8")
+    content = load_text(p)
+    if content or p.exists():
+        save_text(_resume_path(_current_id()), content)
         return content
     return ""
 
 
 def load_resume() -> str:
     """加载当前简历内容。"""
-    p = _resume_path(_current_id())
-    if p.exists():
-        return p.read_text(encoding="utf-8")
-    return ""
+    return load_text(_resume_path(_current_id()))
 
 
 def save_analysis(analysis: dict):
     """保存当前简历分析结果。"""
-    _analysis_path(_current_id()).write_text(
-        json.dumps(analysis, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(_analysis_path(_current_id()), analysis)
 
 
 def load_analysis() -> dict:
     """加载当前简历分析结果。"""
-    p = _analysis_path(_current_id())
-    if p.exists():
-        try:
-            return json.loads(p.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
-            pass
-    return {}
+    data = load_json(_analysis_path(_current_id()))
+    return data if data is not None else {}
 
 
 # ---------------------------------------------------------------------------
@@ -264,22 +254,17 @@ _MAX_RESUME_HISTORY = 30
 
 
 def load_resume_chat() -> list:
-    p = _chat_path(_current_id())
-    if not p.exists():
-        return []
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, IOError):
-        return []
+    data = load_json(_chat_path(_current_id()))
+    if isinstance(data, list):
+        return data
+    return []
 
 
 def save_resume_chat(history: list):
     from .memory import compress_history
     compressed = compress_history(history)
     trimmed = compressed[-_MAX_RESUME_HISTORY * 2:]
-    _chat_path(_current_id()).write_text(
-        json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(_chat_path(_current_id()), trimmed)
 
 
 def clear_resume_chat():
@@ -448,38 +433,29 @@ def generate_interview_questions(resume_content: str) -> Optional[str]:
     messages = [{"role": "user", "content": f"请根据以下简历生成面试题：\n\n{resume_content}"}]
     result = call_ai_messages(messages, ai_config, system=_INTERVIEW_GEN_SYSTEM)
     if result:
-        INTERVIEW_FILE.write_text(
-            json.dumps({"questions": result}, ensure_ascii=False, indent=2),
-            encoding="utf-8")
+        save_json(INTERVIEW_FILE, {"questions": result})
     return result
 
 
 def load_interview_questions() -> str:
-    if INTERVIEW_FILE.exists():
-        try:
-            data = json.loads(INTERVIEW_FILE.read_text(encoding="utf-8"))
-            return data.get("questions", "")
-        except (json.JSONDecodeError, IOError):
-            pass
+    data = load_json(INTERVIEW_FILE)
+    if data is not None:
+        return data.get("questions", "")
     return ""
 
 
 def load_interview_chat() -> list:
-    if not INTERVIEW_CHAT_FILE.exists():
-        return []
-    try:
-        data = json.loads(INTERVIEW_CHAT_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except (json.JSONDecodeError, IOError):
-        return []
+    data = load_json(INTERVIEW_CHAT_FILE)
+    if isinstance(data, list):
+        return data
+    return []
 
 
 def save_interview_chat(history: list):
     from .memory import compress_history
     compressed = compress_history(history)
     trimmed = compressed[-60:]
-    INTERVIEW_CHAT_FILE.write_text(
-        json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(INTERVIEW_CHAT_FILE, trimmed)
 
 
 def clear_interview_chat():
@@ -565,16 +541,12 @@ def generate_interview_report(history: list) -> Optional[str]:
     messages = [{"role": "user", "content": f"请根据以下面试对话生成评估报告：\n\n{conv}"}]
     result = call_ai_messages(messages, ai_config, system=_REPORT_SYSTEM)
     if result:
-        INTERVIEW_REPORT_FILE.write_text(
-            json.dumps({"report": result}, ensure_ascii=False, indent=2),
-            encoding="utf-8")
+        save_json(INTERVIEW_REPORT_FILE, {"report": result})
     return result
 
 
 def load_interview_report() -> str:
-    if INTERVIEW_REPORT_FILE.exists():
-        try:
-            return json.loads(INTERVIEW_REPORT_FILE.read_text(encoding="utf-8")).get("report", "")
-        except (json.JSONDecodeError, IOError):
-            pass
+    data = load_json(INTERVIEW_REPORT_FILE)
+    if data is not None:
+        return data.get("report", "")
     return ""

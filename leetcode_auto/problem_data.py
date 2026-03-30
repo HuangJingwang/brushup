@@ -15,24 +15,20 @@
 }
 """
 
-import json
+from __future__ import annotations
+
 from .config import DATA_DIR
+from .storage import load_json, save_json
 
 PROBLEM_DATA_FILE = DATA_DIR / "problem_data.json"
 
 
 def _load_all() -> dict:
-    if not PROBLEM_DATA_FILE.exists():
-        return {}
-    try:
-        return json.loads(PROBLEM_DATA_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, IOError):
-        return {}
+    return load_json(PROBLEM_DATA_FILE, default={})
 
 
 def _save_all(data: dict):
-    PROBLEM_DATA_FILE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(PROBLEM_DATA_FILE, data)
 
 
 def _normalize_entry(entry: dict | None) -> dict:

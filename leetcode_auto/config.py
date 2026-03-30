@@ -1,9 +1,12 @@
-import json
+from __future__ import annotations
+
 import os
 import shutil
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from .storage import load_json, save_json
 
 DATA_DIR = Path(os.getenv("LEETCODE_AUTO_DIR", os.path.expanduser("~/.leetcode_auto")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -45,17 +48,14 @@ def load_push_config() -> dict:
         "smtp_pass": os.getenv("SMTP_PASS", ""),
         "smtp_to": os.getenv("SMTP_TO", ""),
     }
-    if PUSH_CONFIG_FILE.exists():
-        try:
-            saved = json.loads(PUSH_CONFIG_FILE.read_text(encoding="utf-8"))
-            cfg.update(saved)
-        except (json.JSONDecodeError, IOError):
-            pass
+    saved = load_json(PUSH_CONFIG_FILE)
+    if saved:
+        cfg.update(saved)
     return cfg
 
 
 def save_push_config(cfg: dict):
-    PUSH_CONFIG_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(PUSH_CONFIG_FILE, cfg, secure=True)
 
 
 
@@ -97,12 +97,9 @@ _DEFAULT_PLAN_CONFIG = {
 def load_plan_config() -> dict:
     """加载计划配置，缺失则返回默认值。"""
     config = dict(_DEFAULT_PLAN_CONFIG)
-    if PLAN_CONFIG_FILE.exists():
-        try:
-            saved = json.loads(PLAN_CONFIG_FILE.read_text(encoding="utf-8"))
-            config.update(saved)
-        except (json.JSONDecodeError, IOError):
-            pass
+    saved = load_json(PLAN_CONFIG_FILE)
+    if saved:
+        config.update(saved)
     # 确保 intervals 长度 = rounds - 1
     rounds = config["rounds"]
     intervals = config["intervals"]
@@ -116,8 +113,7 @@ def load_plan_config() -> dict:
 
 def save_plan_config(config: dict):
     """保存计划配置。"""
-    PLAN_CONFIG_FILE.write_text(
-        json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(PLAN_CONFIG_FILE, config)
 
 
 def get_round_keys(config: dict = None) -> tuple:
@@ -155,17 +151,13 @@ def migrate_from_desktop():
 
 def load_credentials() -> dict:
     """加载凭证，优先从 cookies.json 读取，回退到 .env。"""
-    if COOKIES_FILE.exists():
-        try:
-            data = json.loads(COOKIES_FILE.read_text(encoding="utf-8"))
-            if data.get("LEETCODE_SESSION"):
-                return {
-                    "username": data.get("username", ""),
-                    "session": data["LEETCODE_SESSION"],
-                    "csrf": data.get("csrftoken", ""),
-                }
-        except (json.JSONDecodeError, KeyError):
-            pass
+    data = load_json(COOKIES_FILE)
+    if data and data.get("LEETCODE_SESSION"):
+        return {
+            "username": data.get("username", ""),
+            "session": data["LEETCODE_SESSION"],
+            "csrf": data.get("csrftoken", ""),
+        }
 
     return {
         "username": os.getenv("LEETCODE_USERNAME", ""),

@@ -1,5 +1,7 @@
 """可视化与高级分析功能：Rich TUI、热力图、SVG 徽章、薄弱点分析、周报。"""
 
+from __future__ import annotations
+
 import re
 import sys
 from collections import defaultdict

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """进度表解析、写入、更新及数据分析函数。"""
 
-import json
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta, date
 from typing import Optional
@@ -11,6 +12,7 @@ from .config import (
     get_round_keys,
     get_review_intervals,
 )
+from .storage import load_json, save_json
 
 # ---------------------------------------------------------------------------
 # 模块级常量
@@ -28,18 +30,13 @@ _OPTIMIZE_JSON = PLAN_DIR / "optimizations.json"
 
 def _load_optimizations() -> list[dict]:
     """从 JSON 文件加载所有优化建议。"""
-    if not _OPTIMIZE_JSON.exists():
-        return []
-    try:
-        return json.loads(_OPTIMIZE_JSON.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, IOError):
-        return []
+    data = load_json(_OPTIMIZE_JSON)
+    return data if isinstance(data, list) else []
 
 
 def _save_optimizations(data: list[dict]):
     """保存优化建议到 JSON 文件。"""
-    _OPTIMIZE_JSON.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(_OPTIMIZE_JSON, data)
 
 
 def update_optimize_file(filepath, optimizations: list[dict], today_str: str):
@@ -159,38 +156,48 @@ def _parse_round_date(val: str) -> Optional[date]:
     return None
 
 
-def update_progress(rows: list[dict], today_slugs: set[str], today_str: str):
-    """更新进度表，轮次列写入日期而非 ✓。返回 (new, review, filled_rounds)。
-    filled_rounds: [{slug, round_key, title}] 记录本次填入了哪些轮次。
+def update_progress(rows: list[dict], slug_dates: dict[str, str], today_str: str = ""):
+    """更新进度表，轮次列写入实际完成日期。返回 (new, review, filled_rounds)。
+
+    slug_dates: {title_slug: "YYYY-MM-DD"} 每道题的实际完成日期。
+    today_str:  向后兼容，若传入则作为所有题的统一日期（旧调用方式）。
+    filled_rounds: [{slug, round_key, title, date}] 记录本次填入了哪些轮次。
     """
+    # 兼容旧调用方式：传入 set + today_str
+    if isinstance(slug_dates, set):
+        slug_dates = {slug: today_str for slug in slug_dates}
+
     new_problems: list[str] = []
     review_problems: list[str] = []
     filled_rounds: list[dict] = []
 
     for row in rows:
-        if row["title_slug"] not in today_slugs:
+        slug = row["title_slug"]
+        if slug not in slug_dates:
             continue
-        # 如果今天已经填过某一轮，跳过（防止同一天多次同步重复填写）
-        already_filled_today = any(row[rk] == today_str for rk in ROUND_KEYS)
-        if already_filled_today:
+        ac_date = slug_dates[slug]
+        # 如果该日期已经填过某一轮，跳过（防止同一天多次同步重复填写）
+        already_filled = any(row[rk] == ac_date for rk in ROUND_KEYS)
+        if already_filled:
             continue
         is_new = not _is_round_done(row["r1"])
         filled = False
         for rk in ROUND_KEYS:
             if not _is_round_done(row[rk]):
-                row[rk] = today_str
+                row[rk] = ac_date
                 filled = True
                 filled_rounds.append({
-                    "slug": row["title_slug"],
+                    "slug": slug,
                     "round": rk,
                     "title": _display_title(row["title"]),
+                    "date": ac_date,
                 })
                 break
         if not filled:
             continue
         all_done = all(_is_round_done(row[rk]) for rk in ROUND_KEYS)
         row["status"] = "已完成" if all_done else "进行中"
-        row["last_date"] = today_str
+        row["last_date"] = ac_date
         name = _display_title(row["title"])
         (new_problems if is_new else review_problems).append(name)
 

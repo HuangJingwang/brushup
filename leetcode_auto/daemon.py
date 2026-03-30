@@ -10,9 +10,12 @@ Linux  → systemd user timer (~/.config/systemd/user/)
 Windows → schtasks
 """
 
+from __future__ import annotations
+
 import json
 import os
 import platform
+from .storage import load_json, save_json
 import re
 import shutil
 import subprocess
@@ -106,17 +109,28 @@ def parse_schedule(text: str) -> Schedule:
 
 
 def _save_schedule(sched: Schedule):
-    SCHEDULE_FILE.write_text(
-        json.dumps(sched.to_dict(), ensure_ascii=False), encoding="utf-8")
+    save_json(SCHEDULE_FILE, sched.to_dict())
+
+
+def _log_warning(msg: str):
+    """将警告写入同步日志文件。"""
+    from datetime import datetime
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] WARNING: {msg}\n")
+    except OSError:
+        pass
 
 
 def _load_schedule() -> Optional[Schedule]:
-    if SCHEDULE_FILE.exists():
-        try:
-            return Schedule.from_dict(
-                json.loads(SCHEDULE_FILE.read_text(encoding="utf-8")))
-        except Exception:
-            pass
+    data = load_json(SCHEDULE_FILE)
+    if data is None:
+        return None
+    try:
+        return Schedule.from_dict(data)
+    except Exception as e:
+        _log_warning(f"调度配置结构异常 {SCHEDULE_FILE}: {e}")
+        print(f"警告：调度配置格式不兼容（{e}），请重新注册 daemon。")
     return None
 
 
@@ -177,7 +191,7 @@ def _plist_content(sched: Schedule) -> str:
     <string>{LOG_FILE}</string>
 
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -350,13 +364,24 @@ def _install_windows(sched: Schedule):
         ]
 
     subprocess.run(cmd, check=True)
+
+    # 注册开机自启任务：用户登录时立即执行一次
+    boot_task = f"{_TASK_NAME}-Boot"
+    subprocess.run([
+        "schtasks", "/create", "/tn", boot_task,
+        "/tr", wrapped, "/sc", "ONLOGON", "/f",
+    ], check=True)
+
     print(f"已注册 Windows 计划任务，{sched.human_str()}自动同步。")
+    print(f"已启用开机自启（用户登录时自动执行）。")
     print(f"日志文件：{LOG_FILE}")
     print(f"查看状态：schtasks /query /tn {_TASK_NAME}")
 
 
 def _unload_windows(quiet: bool = False):
     subprocess.run(["schtasks", "/delete", "/tn", _TASK_NAME, "/f"],
+                   capture_output=True)
+    subprocess.run(["schtasks", "/delete", "/tn", f"{_TASK_NAME}-Boot", "/f"],
                    capture_output=True)
     if not quiet:
         print("已卸载 Windows 计划任务，后台同步已停止。")
@@ -461,6 +486,15 @@ def daemon_status():
     else:
         print(f"不支持的系统：{system}")
 
+    # 展示最近 AI 错误
+    try:
+        from .ai_analyzer import get_last_ai_error
+        err = get_last_ai_error()
+        if err:
+            print(f"\n最近 AI 错误：{err}")
+    except Exception:
+        pass
+
 
 # ---------------------------------------------------------------------------
 # 每日提醒守护
@@ -514,7 +548,7 @@ def _remind_plist_content() -> str:
     <string>{REMIND_LOG_FILE}</string>
 
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -621,7 +655,14 @@ def _install_remind_windows():
             "/tr", f'cmd /c "{lc_bin} --remind"',
             "/sc", "daily", "/st", f"{h:02d}:{m:02d}", "/f",
         ], check=True)
+    # 开机自启：用户登录时执行一次提醒
+    subprocess.run([
+        "schtasks", "/create", "/tn", f"{_REMIND_TASK_PREFIX}-Boot",
+        "/tr", f'cmd /c "{lc_bin} --remind"',
+        "/sc", "ONLOGON", "/f",
+    ], check=True)
     print(f"已注册每日提醒，每天 {_remind_times_str()} 推送通知。")
+    print("已启用开机自启（用户登录时自动提醒）。")
 
 
 def _unload_remind_windows(quiet: bool = False):
@@ -629,6 +670,8 @@ def _unload_remind_windows(quiet: bool = False):
         task_name = f"{_REMIND_TASK_PREFIX}-{h:02d}{m:02d}"
         subprocess.run(["schtasks", "/delete", "/tn", task_name, "/f"],
                        capture_output=True)
+    subprocess.run(["schtasks", "/delete", "/tn", f"{_REMIND_TASK_PREFIX}-Boot", "/f"],
+                   capture_output=True)
     if not quiet:
         print("已卸载每日提醒。")
 
@@ -734,7 +777,7 @@ def _report_plist_content() -> str:
     <key>StandardErrorPath</key>
     <string>{REPORT_LOG_FILE}</string>
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -775,6 +818,10 @@ def _install_report_windows():
     subprocess.run(["schtasks", "/create", "/tn", _REPORT_TASK_NAME,
                     "/tr", f'cmd /c "{lc_bin} --report-push"',
                     "/sc", "weekly", "/d", "SUN", "/st", "20:00", "/f"], check=True)
+    # 开机自启：用户登录时执行一次周报推送
+    subprocess.run(["schtasks", "/create", "/tn", f"{_REPORT_TASK_NAME}-Boot",
+                    "/tr", f'cmd /c "{lc_bin} --report-push"',
+                    "/sc", "ONLOGON", "/f"], check=True)
 
 
 def _unload_report(quiet=False):
@@ -790,6 +837,7 @@ def _unload_report(quiet=False):
         subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
     elif system == "Windows":
         subprocess.run(["schtasks", "/delete", "/tn", _REPORT_TASK_NAME, "/f"], capture_output=True)
+        subprocess.run(["schtasks", "/delete", "/tn", f"{_REPORT_TASK_NAME}-Boot", "/f"], capture_output=True)
     if not quiet:
         print("Weekly report daemon stopped.")
 
@@ -827,3 +875,141 @@ def report_daemon_status():
         result = subprocess.run(["schtasks", "/query", "/tn", _REPORT_TASK_NAME], capture_output=True)
         print(f"Weekly report: {'registered (Sun 20:00)' if result.returncode == 0 else 'not registered'}")
     print(f"Log: {REPORT_LOG_FILE}")
+
+
+# ---------------------------------------------------------------------------
+# Web 看板开机自启（登录后自动启动 Web 服务并打开浏览器）
+# ---------------------------------------------------------------------------
+
+WEB_SERVICE_ID = "com.brushup.web"
+_WEB_PLIST_FILE = _PLIST_DIR / f"{WEB_SERVICE_ID}.plist"
+_WEB_SERVICE_FILE = _SYSTEMD_DIR / "brushup-web.service"
+_WEB_TASK_NAME = "BrushUp-Web"
+WEB_LOG_FILE = DATA_DIR / "web.log"
+_DEFAULT_WEB_PORT = 8100
+
+
+def _web_plist_content(port: int) -> str:
+    prog = _plist_program_args(["--web", str(port)])
+    path_env = os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{WEB_SERVICE_ID}</string>
+    <key>ProgramArguments</key>
+    <array>
+{prog}
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{WEB_LOG_FILE}</string>
+    <key>StandardErrorPath</key>
+    <string>{WEB_LOG_FILE}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{path_env}</string>
+    </dict>
+</dict>
+</plist>"""
+
+
+def _install_web_macos(port: int):
+    _PLIST_DIR.mkdir(parents=True, exist_ok=True)
+    if _WEB_PLIST_FILE.exists():
+        subprocess.run(["launchctl", "unload", str(_WEB_PLIST_FILE)], capture_output=True)
+        _WEB_PLIST_FILE.unlink()
+    _WEB_PLIST_FILE.write_text(_web_plist_content(port), encoding="utf-8")
+    subprocess.run(["launchctl", "load", str(_WEB_PLIST_FILE)], check=True)
+
+
+def _install_web_linux(port: int):
+    lc_bin = _find_leetcode_bin()
+    _SYSTEMD_DIR.mkdir(parents=True, exist_ok=True)
+    _WEB_SERVICE_FILE.write_text(
+        f"[Unit]\nDescription=BrushUp Web Dashboard\n\n"
+        f"[Service]\nType=simple\nExecStart={lc_bin} --web {port}\n"
+        f"Restart=on-failure\nRestartSec=5\n"
+        f"StandardOutput=append:{WEB_LOG_FILE}\nStandardError=append:{WEB_LOG_FILE}\n"
+        f"Environment=PATH={os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin')}\n\n"
+        f"[Install]\nWantedBy=default.target\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+    subprocess.run(["systemctl", "--user", "enable", "--now", "brushup-web.service"], check=True)
+
+
+def _install_web_windows(port: int):
+    lc_bin = _find_leetcode_bin()
+    subprocess.run([
+        "schtasks", "/create", "/tn", _WEB_TASK_NAME,
+        "/tr", f'cmd /c "{lc_bin} --web {port}"',
+        "/sc", "ONLOGON", "/f",
+    ], check=True)
+
+
+def _unload_web(quiet=False):
+    system = platform.system()
+    if system == "Darwin":
+        if _WEB_PLIST_FILE.exists():
+            subprocess.run(["launchctl", "unload", str(_WEB_PLIST_FILE)], capture_output=True)
+            _WEB_PLIST_FILE.unlink()
+    elif system == "Linux":
+        subprocess.run(["systemctl", "--user", "disable", "--now", "brushup-web.service"], capture_output=True)
+        if _WEB_SERVICE_FILE.exists():
+            _WEB_SERVICE_FILE.unlink()
+        subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
+    elif system == "Windows":
+        subprocess.run(["schtasks", "/delete", "/tn", _WEB_TASK_NAME, "/f"], capture_output=True)
+    if not quiet:
+        print("Web 看板开机自启已关闭。")
+
+
+def install_web_daemon(port: int = _DEFAULT_WEB_PORT):
+    """注册 Web 看板开机自启。"""
+    system = platform.system()
+    if system == "Darwin":
+        _install_web_macos(port)
+    elif system == "Linux":
+        _install_web_linux(port)
+    elif system == "Windows":
+        _install_web_windows(port)
+    else:
+        print(f"不支持的系统：{system}")
+        return
+    print(f"Web 看板已注册开机自启（端口 {port}）。")
+    print(f"登录后自动打开 http://127.0.0.1:{port}")
+    print("关闭：leetcode --web-daemon stop")
+
+
+def uninstall_web_daemon():
+    _unload_web()
+
+
+def web_daemon_status():
+    system = platform.system()
+    if system == "Darwin":
+        result = subprocess.run(["launchctl", "list"], capture_output=True, text=True)
+        found = any(WEB_SERVICE_ID in l for l in result.stdout.splitlines())
+        if found:
+            parts = [l for l in result.stdout.splitlines() if WEB_SERVICE_ID in l][0].split()
+            pid = parts[0] if parts[0] != "-" else "待启动"
+            print(f"Web 看板：已注册（进程 {pid}）")
+        else:
+            print("Web 看板：未注册")
+    elif system == "Linux":
+        result = subprocess.run(["systemctl", "--user", "is-active", "brushup-web.service"],
+                                capture_output=True, text=True)
+        active = result.stdout.strip() == "active"
+        print(f"Web 看板：{'运行中' if active else '未注册'}")
+    elif system == "Windows":
+        result = subprocess.run(["schtasks", "/query", "/tn", _WEB_TASK_NAME], capture_output=True)
+        print(f"Web 看板：{'已注册' if result.returncode == 0 else '未注册'}")
+    print("启用：leetcode --web-daemon [PORT]")
+    print("关闭：leetcode --web-daemon stop")

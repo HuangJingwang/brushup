@@ -1,6 +1,7 @@
 """LeetCode API interactions: session checks, submission fetching, and optimization analysis."""
 
-import json
+from __future__ import annotations
+
 import re
 import subprocess
 import sys
@@ -10,6 +11,7 @@ from typing import Optional
 import requests
 
 from .config import LEETCODE_API_URL, LEETCODE_BASE_URL, COOKIES_FILE, DATA_DIR, load_credentials
+from .storage import load_json, save_json
 
 CST = timezone(timedelta(hours=8))
 
@@ -67,19 +69,14 @@ def check_session(session: str, csrf: str) -> SessionCheckResult:
 def _save_user_profile(username: str, avatar: str):
     """保存用户资料到本地。"""
     profile = {"username": username, "avatar": avatar}
-    profile_file = DATA_DIR / "user_profile.json"
-    profile_file.write_text(
-        json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(DATA_DIR / "user_profile.json", profile)
 
 
 def load_user_profile() -> dict:
     """加载保存的用户资料。"""
-    profile_file = DATA_DIR / "user_profile.json"
-    if profile_file.exists():
-        try:
-            return json.loads(profile_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
-            pass
+    data = load_json(DATA_DIR / "user_profile.json")
+    if data is not None:
+        return data
     return {"username": "", "avatar": ""}
 
 
@@ -180,7 +177,7 @@ def browser_login() -> dict:
         "csrftoken": csrf_val,
         "saved_at": datetime.now(CST).isoformat(),
     }
-    COOKIES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(COOKIES_FILE, data, secure=True)
     print(f"登录成功！用户：{username}", flush=True)
     print(f"Cookie 已保存到 {COOKIES_FILE}\n", flush=True)
     return {"username": username, "session": session_val, "csrf": csrf_val}
@@ -419,13 +416,15 @@ def analyze_submissions_for_optimization(
     return results
 
 
-def filter_today_ac(submissions: list[dict]) -> list[dict]:
-    today_start = datetime.now(CST).replace(hour=0, minute=0, second=0, microsecond=0)
+def filter_today_ac(submissions: list[dict], since: datetime = None) -> list[dict]:
+    """筛选 since 之后的 AC 提交（默认今日 00:00）。去重同一题只保留最新一条。"""
+    if since is None:
+        since = datetime.now(CST).replace(hour=0, minute=0, second=0, microsecond=0)
     seen: set[str] = set()
     result: list[dict] = []
     for sub in submissions:
         ts = datetime.fromtimestamp(int(sub["timestamp"]), tz=CST)
-        if ts >= today_start and sub["titleSlug"] not in seen:
+        if ts >= since and sub["titleSlug"] not in seen:
             seen.add(sub["titleSlug"])
             result.append(sub)
     return result
@@ -460,7 +459,6 @@ _STRUGGLE_FILE = DATA_DIR / "struggle_notebook.json"
 
 def _save_struggles(titles, attempt_count, slug_to_title, ac_slugs):
     """Save struggle problems to persistent notebook."""
-    import json
     from datetime import date
     existing = load_struggle_notebook()
     today = date.today().isoformat()
@@ -482,15 +480,10 @@ def _save_struggles(titles, attempt_count, slug_to_title, ac_slugs):
         if key not in seen:
             seen.add(key)
             deduped.append(e)
-    _STRUGGLE_FILE.write_text(json.dumps(deduped, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(_STRUGGLE_FILE, deduped)
 
 
 def load_struggle_notebook() -> list:
     """Load all struggle problems."""
-    import json
-    if _STRUGGLE_FILE.exists():
-        try:
-            return json.loads(_STRUGGLE_FILE.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
-            pass
-    return []
+    data = load_json(_STRUGGLE_FILE)
+    return data if isinstance(data, list) else []

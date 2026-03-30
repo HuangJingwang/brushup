@@ -1,5 +1,7 @@
 """首次运行时自动创建刷题计划文件夹和模板文件。"""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
