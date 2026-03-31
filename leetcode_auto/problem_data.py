@@ -37,6 +37,7 @@ def _normalize_entry(entry: dict | None) -> dict:
     entry.setdefault("time_spent", [])
     entry.setdefault("ai_reviews", [])
     entry.setdefault("solution_viewed", False)
+    entry.setdefault("must_repeat", False)
     return entry
 
 
@@ -69,6 +70,16 @@ def is_solution_viewed(slug: str) -> bool:
 def set_solution_viewed(slug: str, viewed: bool):
     data = _load_all()
     _ensure(data, slug)["solution_viewed"] = bool(viewed)
+    _save_all(data)
+
+
+def is_must_repeat(slug: str) -> bool:
+    return bool(_load_all().get(slug, {}).get("must_repeat", False))
+
+
+def set_must_repeat(slug: str, repeat: bool):
+    data = _load_all()
+    _ensure(data, slug)["must_repeat"] = bool(repeat)
     _save_all(data)
 
 

@@ -519,13 +519,15 @@ def serve_web(
         def _post_problem(self):
             req = self._read_json()
             action = req.get("action", "")
-            from .problem_data import save_note, add_time_spent, set_solution_viewed
+            from .problem_data import save_note, add_time_spent, set_solution_viewed, set_must_repeat
             if action == "save_note":
                 save_note(req.get("slug", ""), req.get("note", ""))
             elif action == "add_time":
                 add_time_spent(req.get("slug", ""), req.get("seconds", 0))
             elif action == "set_solution_viewed":
                 set_solution_viewed(req.get("slug", ""), req.get("viewed", False))
+            elif action == "set_must_repeat":
+                set_must_repeat(req.get("slug", ""), req.get("repeat", False))
             else:
                 self._send_json({"error": "unknown"})
                 return

@@ -207,6 +207,11 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .tag-new { background:rgba(88,166,255,0.12); color:var(--accent); }
 .tag-cat { background:rgba(139,148,158,0.12); color:var(--dim); }
 .tag-solution { background:rgba(210,153,34,0.15); color:var(--yellow); }
+.tag-repeat { background:rgba(248,81,73,0.18); color:var(--red); font-weight:600; animation:repeat-pulse 2s ease-in-out infinite; }
+@keyframes repeat-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.repeat-btn { background:none; border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:999px; font-size:11px; cursor:pointer; transition:all var(--transition); white-space:nowrap; }
+.repeat-btn:hover { border-color:var(--red); color:var(--red); }
+.repeat-btn.active { background:rgba(248,81,73,0.18); border-color:rgba(248,81,73,0.5); color:var(--red); font-weight:600; }
 .solution-btn { background:none; border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:999px; font-size:11px; cursor:pointer; transition:all var(--transition); white-space:nowrap; }
 .solution-btn:hover { border-color:var(--yellow); color:var(--yellow); }
 .solution-btn.active { background:rgba(210,153,34,0.15); border-color:rgba(210,153,34,0.45); color:var(--yellow); }
@@ -540,6 +545,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
       <option value="not-started" data-i18n="status_ns">Not Started</option>
       <option value="in-progress" data-i18n="status_ip">In Progress</option>
       <option value="completed" data-i18n="status_done">Completed</option>
+      <option value="must-repeat" data-i18n="status_repeat">Must Repeat</option>
     </select>
     <button id="clear-filters" class="clear-btn" style="display:none;" data-i18n="clear_filter">Clear</button>
     <button id="export-csv-btn" class="clear-btn" data-i18n="export_csv">Export CSV</button>
@@ -766,7 +772,7 @@ var I18N={
     card_rate:'完成率',card_rounds:'各轮进度',card_radar:'分类能力',
     card_trend:'每日趋势',card_heatmap:'刷题热力图（近 365 天）',card_checkin_trend:'每日趋势',
     search_ph:'搜索题目...',diff_all:'全部难度',diff_easy:'简单',diff_medium:'中等',diff_hard:'困难',
-    cat_all:'全部分类',status_all:'全部状态',status_ns:'未开始',status_ip:'进行中',status_done:'已完成',
+    cat_all:'全部分类',status_all:'全部状态',status_ns:'未开始',status_ip:'进行中',status_done:'已完成',status_repeat:'反复刷',
     clear_filter:'清除筛选',table_count:'整体进度 {problems_done}/{problems_total} 题 · 轮次 {done}/{rounds} · 显示 {shown}/{total} 题',
     th_title:'题目',th_diff:'难度',th_cat:'分类',th_status:'状态',
     chart_new:'新题',chart_review:'复习',
@@ -798,7 +804,7 @@ var I18N={
     nav_achievements:'成就',
     export_csv:'导出 CSV',
     focus_mode:'专项突破',focus_select:'选择薄弱分类',
-    notes_ph:'添加笔记...',notes_save:'保存笔记',solution_viewed:'看过题解',solution_unviewed:'未看题解',
+    notes_ph:'添加笔记...',notes_save:'保存笔记',solution_viewed:'看过题解',solution_unviewed:'未看题解',must_repeat:'反复刷',must_repeat_off:'标记反复刷',
     achievement_streak7:'连续打卡 7 天',achievement_streak30:'连续打卡 30 天',
     achievement_r1_all:'R1 全部完成',achievement_r1_half:'R1 完成一半',
     shortcut_hint:'快捷键：1-9 切换标签页',
@@ -812,7 +818,7 @@ var I18N={
     card_rate:'Completion Rate',card_rounds:'Round Progress',card_radar:'Category Radar',
     card_trend:'Daily Trend',card_heatmap:'Heatmap (365 days)',card_checkin_trend:'Daily Trend',
     search_ph:'Search...',diff_all:'All Difficulty',diff_easy:'Easy',diff_medium:'Medium',diff_hard:'Hard',
-    cat_all:'All Categories',status_all:'All Status',status_ns:'Not Started',status_ip:'In Progress',status_done:'Completed',
+    cat_all:'All Categories',status_all:'All Status',status_ns:'Not Started',status_ip:'In Progress',status_done:'Completed',status_repeat:'Must Repeat',
     clear_filter:'Clear',table_count:'Overall {problems_done}/{problems_total} problems · {done}/{rounds} rounds · Showing {shown}/{total}',
     th_title:'Title',th_diff:'Difficulty',th_cat:'Category',th_status:'Status',
     chart_new:'New',chart_review:'Review',
@@ -844,7 +850,7 @@ var I18N={
     nav_achievements:'Achievements',
     export_csv:'Export CSV',
     focus_mode:'Focus Mode',focus_select:'Select weak category',
-    notes_ph:'Add notes...',notes_save:'Save Note',solution_viewed:'Viewed Solution',solution_unviewed:'No Solution Viewed',
+    notes_ph:'Add notes...',notes_save:'Save Note',solution_viewed:'Viewed Solution',solution_unviewed:'No Solution Viewed',must_repeat:'Must Repeat',must_repeat_off:'Mark Repeat',
     achievement_streak7:'7-day streak',achievement_streak30:'30-day streak',
     achievement_r1_all:'R1 all done',achievement_r1_half:'R1 half done',
     shortcut_hint:'Shortcuts: 1-9 to switch tabs',
@@ -1121,9 +1127,13 @@ window.addEventListener('resize',function(){
 function ensureProblemDataEntry(slug){
   if(!D.problem_data) D.problem_data={};
   if(!D.problem_data[slug]){
-    D.problem_data[slug]={notes:'',time_spent:[],ai_reviews:[],solution_viewed:false};
-  } else if(typeof D.problem_data[slug].solution_viewed==='undefined'){
+    D.problem_data[slug]={notes:'',time_spent:[],ai_reviews:[],solution_viewed:false,must_repeat:false};
+  }
+  if(typeof D.problem_data[slug].solution_viewed==='undefined'){
     D.problem_data[slug].solution_viewed=false;
+  }
+  if(typeof D.problem_data[slug].must_repeat==='undefined'){
+    D.problem_data[slug].must_repeat=false;
   }
   return D.problem_data[slug];
 }
@@ -1148,10 +1158,12 @@ function renderTodayFocus(){
     var dc=item.difficulty==='简单'?'diff-easy':item.difficulty==='困难'?'diff-hard':'diff-medium';
     var pdata=ensureProblemDataEntry(item.slug);
     var viewed=!!pdata.solution_viewed;
+    var repeat=!!pdata.must_repeat;
     h+='<li class="focus-item"><div class="focus-main">'
       +'<a href="https://leetcode.cn/problems/'+item.slug+'/" target="_blank">'+item.title+'</a>'
-      +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+'</div>'
+      +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+(repeat?'<span class="tag tag-repeat">'+t('must_repeat')+'</span>':'')+'</div>'
       +'</div><div class="focus-actions">'
+      +'<button class="repeat-btn'+(repeat?' active':'')+'" onclick="toggleMustRepeat(event,\''+item.slug+'\')">'+mustRepeatText(repeat)+'</button>'
       +'<button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+item.slug+'\')">'+solutionViewedText(viewed)+'</button>'
       +'<button class="focus-done-btn" onclick="checkTodayFocusDone(this,\''+item.slug+'\')">'+t('focus_done')+'</button>'
       +'</div></li>';
@@ -1193,10 +1205,12 @@ function renderTodayPlan(){
       var dc=item.difficulty==='简单'?'diff-easy':item.difficulty==='困难'?'diff-hard':'diff-medium';
       var pdata=ensureProblemDataEntry(item.slug);
       var viewed=!!pdata.solution_viewed;
+      var repeat=!!pdata.must_repeat;
       h+='<li><div class="today-main">'
         +'<a href="https://leetcode.cn/problems/'+item.slug+'/" target="_blank">'+item.title+'</a>'
-        +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+'</div>'
+        +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+(repeat?'<span class="tag tag-repeat">'+t('must_repeat')+'</span>':'')+'</div>'
         +'</div>'
+        +'<button class="repeat-btn'+(repeat?' active':'')+'" onclick="toggleMustRepeat(event,\''+item.slug+'\')">'+mustRepeatText(repeat)+'</button>'
         +'<button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+item.slug+'\')">'+solutionViewedText(viewed)+'</button></li>';
     });
     newList.innerHTML=h;
@@ -1231,6 +1245,24 @@ function toggleSolutionViewed(event, slug){
   }).then(function(r){return r.json()}).then(function(data){
     if(data&&data.ok){
       setSolutionViewed(slug, next);
+      renderTodayFocus();
+      renderTodayPlan();
+      renderTable();
+    }
+  }).catch(function(){});
+}
+function mustRepeatText(repeat){
+  return t(repeat?'must_repeat':'must_repeat_off');
+}
+function toggleMustRepeat(event, slug){
+  if(event){event.preventDefault();event.stopPropagation();}
+  var current=!!ensureProblemDataEntry(slug).must_repeat;
+  var next=!current;
+  fetch('/api/problem',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'set_must_repeat',slug:slug,repeat:next})
+  }).then(function(r){return r.json()}).then(function(data){
+    if(data&&data.ok){
+      ensureProblemDataEntry(slug).must_repeat=!!next;
       renderTodayFocus();
       renderTodayPlan();
       renderTable();
@@ -2033,6 +2065,7 @@ function renderTable(){
       if(statusF==='not-started'&&hasR1) return false;
       if(statusF==='in-progress'&&(!hasR1||allDone)) return false;
       if(statusF==='completed'&&!allDone) return false;
+      if(statusF==='must-repeat'&&!ensureProblemDataEntry(r.slug).must_repeat) return false;
     }
     return true;
   });
@@ -2058,10 +2091,12 @@ function renderTable(){
     var roundCells=rKeys3.map(function(k){return rc(r[k])}).join('');
     var pdata=ensureProblemDataEntry(r.slug);
     var viewed=!!pdata.solution_viewed;
+    var repeat=!!pdata.must_repeat;
     var solutionTag=viewed?'<span class="tag tag-solution" style="margin-left:8px">'+t('solution_viewed')+'</span>':'';
+    var repeatTag=repeat?'<span class="tag tag-repeat" style="margin-left:8px">'+t('must_repeat')+'</span>':'';
     html+='<tr style="cursor:pointer" data-slug="'+r.slug+'">'
       +'<td>'+r.num+'</td>'
-      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank" onclick="event.stopPropagation()">'+r.title+'</a>'+solutionTag+'</td>'
+      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank" onclick="event.stopPropagation()">'+r.title+'</a>'+solutionTag+repeatTag+'</td>'
       +'<td class="'+diffClass+'">'+r.difficulty+'</td>'
       +'<td><span class="cat-tag">'+r.category+'</span></td>'
       +roundCells
@@ -2078,7 +2113,7 @@ function renderTable(){
     }
     html+='<tr class="note-row"><td colspan="'+(4+rKeys3.length+1)+'">'
       +'<textarea class="note-textarea" data-slug="'+r.slug+'" placeholder="'+t('notes_ph')+'">'+note.replace(/</g,'&lt;')+'</textarea>'
-      +'<div class="note-actions"><button class="note-save-btn" onclick="saveNote(this)" data-i18n="notes_save">'+t('notes_save')+'</button><button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+r.slug+'\')">'+solutionViewedText(viewed)+'</button></div>'
+      +'<div class="note-actions"><button class="note-save-btn" onclick="saveNote(this)" data-i18n="notes_save">'+t('notes_save')+'</button><button class="repeat-btn'+(repeat?' active':'')+'" onclick="toggleMustRepeat(event,\''+r.slug+'\')">'+mustRepeatText(repeat)+'</button><button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+r.slug+'\')">'+solutionViewedText(viewed)+'</button></div>'
       +reviewHtml
       +'</td></tr>';
   });
