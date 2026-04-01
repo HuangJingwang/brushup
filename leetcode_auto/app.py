@@ -27,10 +27,15 @@ def create_app() -> FastAPI:
     app = FastAPI(title="BrushUp", lifespan=lifespan)
 
     # Routers (must be registered before static files mount)
-    from .routers import data, auth, problems
+    from .routers import data, auth, problems, focus, sync_router, chat, resume, settings
     app.include_router(data.router)
     app.include_router(auth.router)
     app.include_router(problems.router)
+    app.include_router(focus.router)
+    app.include_router(sync_router.router)
+    app.include_router(chat.router)
+    app.include_router(resume.router)
+    app.include_router(settings.router)
 
     # Static files
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
