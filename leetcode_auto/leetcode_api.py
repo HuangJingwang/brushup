@@ -327,9 +327,7 @@ query submissionDetail($submissionId: ID!) {
         memory
         runtimePercentile
         memoryPercentile
-        lang {
-            name
-        }
+        lang
         question {
             titleSlug
             title
@@ -384,7 +382,7 @@ def check_optimization_potential(detail: dict, threshold: float = 50.0) -> Optio
     return {
         "title_slug": question.get("titleSlug", ""),
         "title": question.get("translatedTitle") or question.get("title", ""),
-        "lang": detail.get("lang", {}).get("name", ""),
+        "lang": detail.get("lang", ""),
         "runtime": detail.get("runtime", ""),
         "memory": detail.get("memory", ""),
         "runtime_pct": runtime_pct,

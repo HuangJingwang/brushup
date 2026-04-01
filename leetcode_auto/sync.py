@@ -486,12 +486,19 @@ def _step_per_round_ai(
                 creds["session"], creds["csrf"], str(sub["id"]),
             )
             code = detail.get("code", "")
-            lang = (detail.get("lang") or {}).get("name", "")
+            lang = detail.get("lang") or ""
             if not code:
                 continue
             prompt = (
-                f"请简要分析以下 LeetCode 题目 {title}（{rk.upper()}）的代码，"
-                f"指出可优化的点和改进方向（100字以内）：\n\n```{lang.lower()}\n{code}\n```"
+                f"请对以下 LeetCode 题目 {title}（第 {rk.upper()} 轮复习）的代码进行全面 Code Review。\n\n"
+                f"```{lang.lower()}\n{code}\n```\n\n"
+                f"请按以下维度逐项点评（每项 1-2 句话，没有问题就说「无问题」）：\n"
+                f"1. **正确性**：代码逻辑是否正确，是否有边界情况遗漏或潜在 bug\n"
+                f"2. **时间/空间复杂度**：当前复杂度是多少，是否有更优解法\n"
+                f"3. **代码质量**：是否有未使用的变量、冗余代码、命名不清晰、逻辑可简化的地方\n"
+                f"4. **更优解法**：是否存在更好的算法思路（简要说明即可）\n"
+                f"5. **一句话总结**：这段代码的整体评价和最值得改进的一点\n\n"
+                f"请用中文回答，简洁直接。"
             )
             analysis = call_ai(prompt, ai_cfg)
             if analysis:
@@ -516,8 +523,11 @@ def _flush_imported(header_lines: list[str], rows: list[dict], imported_titles: 
         update_dashboard(DASHBOARD_FILE, rows, 0, review_due)
 
 
-def sync(interactive: bool = True) -> SyncResult:
-    """主同步入口。返回 SyncResult，不再调用 sys.exit。"""
+def sync(interactive: bool = True, quiet: bool = False) -> SyncResult:
+    """主同步入口。返回 SyncResult，不再调用 sys.exit。
+
+    quiet: 为 True 时不发送桌面通知（用于定时后台同步）。
+    """
     today = datetime.now(CST)
     today_str = today.strftime("%Y-%m-%d")
     result = SyncResult()
@@ -526,7 +536,8 @@ def sync(interactive: bool = True) -> SyncResult:
     ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
     creds = ensure_credentials(interactive=interactive)
     if not creds:
-        send_notification("LeetCode 同步失败", "Cookie 已过期，请运行 leetcode --login")
+        if not quiet:
+            send_notification("LeetCode 同步失败", "Cookie 已过期，请运行 leetcode --login")
         return SyncResult(success=False, error="Cookie 过期")
     username = creds["username"]
 
@@ -595,13 +606,14 @@ def sync(interactive: bool = True) -> SyncResult:
     step_num = 11 if optimizations else 10
     _step_per_round_ai(creds, filled_rounds, today_subs, today_str, step_num)
 
-    # 通知
-    msg = f"新题 {result.new_count} 道，复习 {result.review_count} 道"
-    if struggles:
-        msg += f"，卡点 {result.struggle_count} 道"
-    if optimizations:
-        msg += f"，{result.optimization_count} 道待优化"
-    send_notification("LeetCode 同步完成", msg)
+    # 通知（定时同步不弹通知）
+    if not quiet:
+        msg = f"新题 {result.new_count} 道，复习 {result.review_count} 道"
+        if struggles:
+            msg += f"，卡点 {result.struggle_count} 道"
+        if optimizations:
+            msg += f"，{result.optimization_count} 道待优化"
+        send_notification("LeetCode 同步完成", msg)
 
     _save_last_sync_time()
     print("\n=== 同步完成 ===")
