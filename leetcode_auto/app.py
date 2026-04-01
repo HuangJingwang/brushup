@@ -25,8 +25,17 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(title="BrushUp", lifespan=lifespan)
+
+    # Routers (must be registered before static files mount)
+    from .routers import data, auth, problems
+    app.include_router(data.router)
+    app.include_router(auth.router)
+    app.include_router(problems.router)
+
+    # Static files
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+    # Catch-all index (must be last)
     @app.get("/")
     async def index():
         return FileResponse(STATIC_DIR / "index.html")
