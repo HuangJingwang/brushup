@@ -490,8 +490,15 @@ def _step_per_round_ai(
             if not code:
                 continue
             prompt = (
-                f"请简要分析以下 LeetCode 题目 {title}（{rk.upper()}）的代码，"
-                f"指出可优化的点和改进方向（100字以内）：\n\n```{lang.lower()}\n{code}\n```"
+                f"请对以下 LeetCode 题目 {title}（第 {rk.upper()} 轮复习）的代码进行全面 Code Review。\n\n"
+                f"```{lang.lower()}\n{code}\n```\n\n"
+                f"请按以下维度逐项点评（每项 1-2 句话，没有问题就说「无问题」）：\n"
+                f"1. **正确性**：代码逻辑是否正确，是否有边界情况遗漏或潜在 bug\n"
+                f"2. **时间/空间复杂度**：当前复杂度是多少，是否有更优解法\n"
+                f"3. **代码质量**：是否有未使用的变量、冗余代码、命名不清晰、逻辑可简化的地方\n"
+                f"4. **更优解法**：是否存在更好的算法思路（简要说明即可）\n"
+                f"5. **一句话总结**：这段代码的整体评价和最值得改进的一点\n\n"
+                f"请用中文回答，简洁直接。"
             )
             analysis = call_ai(prompt, ai_cfg)
             if analysis:
