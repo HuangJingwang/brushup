@@ -486,7 +486,7 @@ def _step_per_round_ai(
                 creds["session"], creds["csrf"], str(sub["id"]),
             )
             code = detail.get("code", "")
-            lang = (detail.get("lang") or {}).get("name", "")
+            lang = detail.get("lang") or ""
             if not code:
                 continue
             prompt = (
