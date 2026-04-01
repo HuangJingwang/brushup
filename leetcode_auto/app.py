@@ -15,6 +15,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup/shutdown lifecycle."""
+    from .db.database import init_db
+    from .db.migration import migrate_if_needed
+    init_db()
+    migrate_if_needed()
     yield
 
 
